@@ -60,14 +60,19 @@ variable "talos_iso_file" {
 }
 
 variable "disk_storage" {
-  description = "Primary datastore ID for the main VM disk (e.g. local, local-zfs, zfs1)"
+  description = "Primary datastore ID for the main VM disk. MUST support 'images' (e.g. local-lvm, local-zfs, zfs1). Note: 'local' (directory) does not support images — use LVM or ZFS storage instead."
   type        = string
+
+  validation {
+    condition     = var.disk_storage != "local"
+    error_message = "disk_storage cannot be 'local' — it does not support VM images. Use 'local-lvm', 'local-zfs', or another LVM/ZFS storage. Check your Proxmox datacenter storage list."
+  }
 }
 
 variable "additional_disk_storage" {
-  description = "Datastore ID for any additional data disks (if nodes specify additional_disk_size)."
+  description = "Datastore ID for any additional data disks (if nodes specify additional_disk_size). Should also support 'images'."
   type        = string
-  default     = "local"
+  default     = "local-lvm"
 }
 
 variable "network_bridge" {

@@ -98,6 +98,7 @@ talosctl apply-config --insecure --nodes 192.168.1.102 --file worker.yaml
 
   <h2>Troubleshooting & common failure cases</h2>
   <ul>
+    <li><strong>Storage does not support VM images</strong>: Error: <code>storage 'local' does not support vm images</code>. The <code>disk_storage</code> variable must point to a storage that supports VM images (e.g., <code>local-lvm</code>, <code>local-zfs</code>, or <code>zfs1</code>). <strong>Note:</strong> Proxmox's <code>local</code> storage is directory-based and only supports ISOs/backups, not VM disks. Use the Proxmox datacenter > storage view to find which storages have <code>images</code> in their content type.</li>
     <li><strong>ISO not found</strong>: Verify the file exists on the target Proxmox storage with <code>pvesm list local</code> or the Proxmox UI.</li>
     <li><strong>Invalid API token</strong>: Ensure <code>TF_VAR_proxmox_api_token</code> or <code>cluster.auto.tfvars</code> has the correctly formatted token (<code>user@realm!tokenid=UUID</code>).</li>
     <li><strong>VMs fail to start</strong>: Check Proxmox node has enough memory/CPU and that the <code>proxmox_node</code> variable matches your host.</li>
