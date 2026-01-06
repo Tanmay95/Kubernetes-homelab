@@ -10,3 +10,7 @@ kubeconfig
 # Editor files
 *.swp
 *.swo
+
+.tfplan
+.terraform.lock.hcl
+tfplan
