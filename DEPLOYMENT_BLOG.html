@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Deploying Talos VMs on Proxmox with Terraform — Step-by-step</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; line-height: 1.6; padding: 2rem; max-width: 900px; margin: auto; color: #111 }
+    header { border-bottom: 1px solid #eee; margin-bottom: 1rem }
+    h1,h2,h3 { color: #0b5; }
+    pre { background:#0f1724; color:#cfe9ff; padding:1rem; overflow:auto }
+    code { background:#f3f4f6; padding:0.15rem 0.35rem; border-radius:4px }
+    .note { background:#fff7cc; padding:0.75rem; border-left:3px solid #e6b800 }
+    ul { margin-top:0 }
+    table { border-collapse: collapse; width:100%; }
+    td, th { border: 1px solid #eaeaea; padding: 0.5rem; text-align:left }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Deploying Talos VMs on Proxmox with Terraform</h1>
+  <p>A step-by-step, beginner-friendly guide explaining what running Terraform will do, sample commands, timing estimates, and troubleshooting tips.</p>
+</header>
+
+<main>
+  <h2>Summary</h2>
+  <p>This repository contains Terraform code that will create a small Talos-based Kubernetes cluster on Proxmox. Running Terraform does not install Talos on the disk automatically — it creates VMs, attaches a Talos (or other specified) ISO as a CD-ROM, configures CPU/RAM/storage and networking, and powers the VMs on. After the VMs boot the ISO you'll complete node configuration with <code>talosctl</code>.</p>
+
+  <h2>What happens when you run <code>terraform apply</code> (high level)</h2>
+  <ol>
+    <li>Terraform initializes providers (Proxmox plugin).</li>
+    <li>Resources are created in Proxmox in the order the plan requires: VM entries, disks in the configured datastore, network interfaces, CD-ROM attachments, and VM start flags.</li>
+    <li>The VMs boot from the attached ISO (if configured to start). You then use the Talos toolchain to provision OS to disk and configure Kubernetes.</li>
+  </ol>
+
+  <h2>Important safe-check: dry run only</h2>
+  <p>Always run a plan first — this shows what Terraform will add or change without making modifications:</p>
+  <pre><code>terraform init
+terraform plan -var-file=cluster.auto.tfvars -out=tfplan</code></pre>
+  <p>To check specifically you will use the Proxmox ISO you uploaded, run:</p>
+  <pre><code>terraform plan -var 'talos_iso_file=local:iso/nocloud-amd64.iso' -out=tfplan_nocloud</code></pre>
+
+  <h2>Sample workflow (commands)</h2>
+  <pre><code># 1) Format and init
+terraform fmt
+terraform init
+
+# 2) Validate and plan (dry-run)
+terraform validate
+terraform plan -var-file=cluster.auto.tfvars -out=tfplan
+
+# 3) (When ready) apply the plan
+terraform apply tfplan
+
+# 4) After VMs exist: generate Talos config and apply
+# (example: adjust IPs to match your cluster.auto.tfvars)
+talosctl gen config proxmox-talos-cluster https://192.168.1.101:6443
+
+# 5) Apply controlplane then workers
+talosctl apply-config --insecure --nodes 192.168.1.101 --file controlplane.yaml
+talosctl apply-config --insecure --nodes 192.168.1.102 --file worker.yaml
+</code></pre>
+
+  <h2>What to expect in Terraform output</h2>
+  <p>When you run <code>terraform plan</code> you'll usually see resource actions like <code>+ create</code> for each VM and details under a CDROM block similar to:</p>
+  <pre><code> + cdrom {
+     file_id = "local:iso/nocloud-amd64.iso"
+     interface = "ide2"
+   }</code></pre>
+  <p>The plan will also present outputs configured in the repo such as <code>vm_details</code> which includes the ISO being used and the expected IPs.</p>
+
+  <h2>Time estimates</h2>
+  <table>
+    <thead><tr><th>Step</th><th>Estimate</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>terraform init/validate/plan</td><td>10–30s</td><td>Local run only, fast</td></tr>
+      <tr><td>terraform apply (create 3 VMs)</td><td>~3–15 minutes</td><td>Depends on disk creation speed and network latency — each VM 1–5 min.</td></tr>
+      <tr><td>Talos config generation and first controlplane bootstrap</td><td>5–20 minutes</td><td>Generating machine configs is instant; bootstrap and etcd leader election may take several minutes.</td></tr>
+      <tr><td>Full cluster ready (including CNI)</td><td>15–45 minutes</td><td>Depends on download times for CNI (Cilium) and applying manifests.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Note:</strong> Timings vary widely with storage performance and network speed. The above are reasonable expectations for a small home Proxmox host.
+  </div>
+
+  <h2>How the repo chooses the ISO and OS version</h2>
+  <p>This project exposes <code>talos_version</code> and <code>talos_iso_file</code>. If you set <code>talos_iso_file</code> in <code>cluster.auto.tfvars</code> (example: <code>local:iso/nocloud-amd64.iso</code>) Terraform will use that ISO. If you leave it blank the code derives a default like <code>local:iso/talos-1.12.0.iso</code>.</p>
+
+  <h2>Explain every file in the repo (short)</h2>
+  <ul>
+    <li><code>main.tf</code>: Creates the Proxmox VMs using the provider.</li>
+    <li><code>variables.tf</code>: Declares variables such as <code>proxmox_api_url</code>, <code>talos_version</code>, and <code>talos_iso_file</code>.</li>
+    <li><code>locals.tf</code>: Builds derived values including a default ISO path and node transforms used by <code>main.tf</code>.</li>
+    <li><code>cluster.auto.tfvars</code>: Your environment-specific values (API token, node names, which ISO to use).</li>
+    <li><code>TALOS_SETUP_GUIDE.md</code>: Post-VM steps using <code>talosctl</code>.</li>
+  </ul>
+
+  <h2>Troubleshooting & common failure cases</h2>
+  <ul>
+    <li><strong>ISO not found</strong>: Verify the file exists on the target Proxmox storage with <code>pvesm list local</code> or the Proxmox UI.</li>
+    <li><strong>Invalid API token</strong>: Ensure <code>TF_VAR_proxmox_api_token</code> or <code>cluster.auto.tfvars</code> has the correctly formatted token (<code>user@realm!tokenid=UUID</code>).</li>
+    <li><strong>VMs fail to start</strong>: Check Proxmox node has enough memory/CPU and that the <code>proxmox_node</code> variable matches your host.</li>
+  </ul>
+
+  <h2>Security and best practices</h2>
+  <ul>
+    <li>Never commit API tokens to Git — use environment variables or a secrets manager.</li>
+    <li>Prefer <code>terraform plan -out=plan.tf</code> then <code>terraform apply plan.tf</code> to avoid mid-run changes.</li>
+    <li>Consider remote state with locking for team use (Terraform Cloud, S3 + DynamoDB).</li>
+  </ul>
+
+  <h2>Quick FAQ for beginners</h2>
+  <dl>
+    <dt>Q: Does Terraform install Talos inside the VMs?</dt>
+    <dd>A: No. Terraform boots the VM from an ISO (so Talos runs from the ISO initially). You still need to apply the Talos machine configuration with <code>talosctl</code> to install to disk and configure Kubernetes.</dd>
+
+    <dt>Q: If I already uploaded <code>nocloud-amd64.iso</code>, will the code use it?</dt>
+    <dd>A: Yes — set <code>talos_iso_file = "local:iso/nocloud-amd64.iso"</code> in <code>cluster.auto.tfvars</code> and the plan will show the CDROM using that ISO.</dd>
+  </dl>
+
+  <h2>Closing / Shareable Notes</h2>
+  <p>This file is meant to be shared with a colleague or newbie to explain the end-to-end process: what Terraform does, what you still do by hand with Talos, and how long it will take. If you'd like I can also produce a Markdown version for README inclusion or a shorter 1-page cheat sheet.</p>
+
+  <footer>
+    <p style="font-size:0.9rem;color:#666">Generated by GitHub Copilot — feel free to edit and tailor commands to your environment.</p>
+  </footer>
+</main>
+</body>
+</html>

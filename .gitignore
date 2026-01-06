@@ -1,0 +1,12 @@
+# Terraform state and local files
+*.tfstate*
+.terraform/
+
+# Sensitive local config
+cluster.auto.tfvars
+talosconfig
+kubeconfig
+
+# Editor files
+*.swp
+*.swo
