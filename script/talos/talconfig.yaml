@@ -1,0 +1,105 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/budimanjojo/talhelper/master/pkg/config/schemas/talconfig.json
+# renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+talosVersion: v1.11.0
+# renovate: datasource=docker depName=ghcr.io/siderolabs/kubelet
+kubernetesVersion: v1.33.3
+# Cluster configuration
+clusterName: proxmox-talos-lab-cluster
+endpoint: https://${CONTROL_PLANE_ENDPOINT_IP}:6443
+clusterPodNets:
+- 10.14.0.0/16
+clusterSvcNets:
+- 10.15.0.0/16
+# NOTE: Using pre-built Image Factory schematic
+# Schematic ID: ddf38e55e30aa9b2bb0b765054ed63444dc00244ab8bb4ad4ad92486602285f8
+# Node configurations
+nodes:
+# Control plane node (from Terraform)
+- hostname: ${TALOS_CONTROL_PLANE_NAME_0}
+  controlPlane: true
+  ipAddress: ${TALOS_CONTROL_PLANE_IP_0}
+  installDisk: /dev/sda
+  networkInterfaces:
+  - deviceSelector:
+      hardwareAddr: "${TALOS_CONTROL_PLANE_MAC_0}"
+    dhcp: false
+    addresses:
+    - ${TALOS_CONTROL_PLANE_IP_0}/24
+    routes:
+    - network: 0.0.0.0/0
+      gateway: ${GATEWAY_IP}
+
+# Worker nodes (from Terraform)
+- hostname: ${TALOS_WORKER_NAME_1}
+  controlPlane: false
+  ipAddress: ${TALOS_WORKER_IP_1}
+  installDisk: /dev/sda
+  networkInterfaces:
+  - deviceSelector:
+      hardwareAddr: "${TALOS_WORKER_MAC_1}"
+    dhcp: false
+    addresses:
+    - ${TALOS_WORKER_IP_1}/24
+    routes:
+    - network: 0.0.0.0/0
+      gateway: ${GATEWAY_IP}
+  nodeLabels:
+    node-type: worker
+
+- hostname: ${TALOS_WORKER_NAME_2}
+  controlPlane: false
+  ipAddress: ${TALOS_WORKER_IP_2}
+  installDisk: /dev/sda
+  networkInterfaces:
+  - deviceSelector:
+      hardwareAddr: "${TALOS_WORKER_MAC_2}"
+    dhcp: false
+    addresses:
+    - ${TALOS_WORKER_IP_2}/24
+    routes:
+    - network: 0.0.0.0/0
+      gateway: ${GATEWAY_IP}
+  nodeLabels:
+    node-type: worker
+# Global patches
+patches:
+# Network configuration
+- |-
+  machine:
+    network:
+      nameservers:
+        - 1.1.1.1
+        - 1.0.0.1
+# Time configuration
+- |-
+  machine:
+    time:
+      disabled: false
+      servers:
+        - time.cloudflare.com
+# Control plane specific configuration
+controlPlane:
+  patches:
+  - |-
+    cluster:
+      proxy:
+        disabled: true
+  # CNI configuration
+  - |-
+    cluster:
+      network:
+        cni:
+          name: none
+  # Pin control plane image to factory schematic
+  - |-
+    machine:
+      install:
+        image: factory.talos.dev/metal-installer/ddf38e55e30aa9b2bb0b765054ed63444dc00244ab8bb4ad4ad92486602285f8:v1.11.0
+# Worker specific configuration
+worker:
+  patches:
+  # Pin worker image to use the same schematic as control plane
+  - |-
+    machine:
+      install:
+        image: factory.talos.dev/metal-installer/ddf38e55e30aa9b2bb0b765054ed63444dc00244ab8bb4ad4ad92486602285f8:v1.11.0

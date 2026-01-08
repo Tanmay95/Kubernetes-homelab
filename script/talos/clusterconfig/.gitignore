@@ -1,0 +1,4 @@
+proxmox-talos-lab-cluster-talos-control-01.yaml
+proxmox-talos-lab-cluster-talos-worker-01.yaml
+proxmox-talos-lab-cluster-talos-worker-02.yaml
+talosconfig

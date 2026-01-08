@@ -205,6 +205,134 @@ cd script
 talhelper genconfig --env-file talenv.yaml
 ```
 
+## Install tools on Ubuntu (no Homebrew)
+
+This repo includes an idempotent installer script for Ubuntu that installs (or skips if already installed):
+
+- `terraform`
+- `kubectl`
+- `talosctl`
+- `talhelper`
+- `sops`
+- `age`
+- `cilium` (cilium-cli)
+
+Run from the repository root:
+
+```bash
+bash script/install-tools-ubuntu.sh
+```
+
+### Version overrides (optional)
+
+You can pin versions by setting environment variables:
+
+```bash
+TALOSCTL_VERSION=1.11.0 \
+SOPS_VERSION=3.9.4 \
+KUBECTL_REPO_MINOR=v1.33 \
+TALHELPER_VERSION=latest \
+bash script/install-tools-ubuntu.sh
+```
+
+Notes:
+
+- `TALHELPER_VERSION=latest` resolves the latest GitHub release tag.
+- `KUBECTL_REPO_MINOR` controls the Kubernetes apt repo track (example: `v1.33`).
+
+## SOPS + talhelper secrets (optional)
+
+Talos clusters require bootstrap secrets. `talhelper gensecret` can generate a secrets file, and `sops` can encrypt it.
+
+This repo includes SOPS config in:
+
+- [script/.sops.yaml](script/.sops.yaml) (for commands run from `script/`)
+- [script/talos/.sops.yaml](script/talos/.sops.yaml) (same config for the Talos config folder)
+
+### Create and encrypt secrets
+
+From the repository root:
+
+```bash
+cd script
+talhelper gensecret > talsecret.sops.yaml
+sops -e -i talsecret.sops.yaml
+```
+
+### Decrypt secrets (when needed)
+
+You will need the matching `age` private key to decrypt. Common locations:
+
+- `~/.config/sops/age/keys.txt`
+
+Example:
+
+```bash
+cd script
+sops -d talsecret.sops.yaml > talsecret.yaml
+```
+
+
+
+### Cilium on Talos: nodes NotReady after install
+
+Symptom:
+
+- After running `cilium install ...`, all nodes show `NotReady`.
+- Cilium agent pods in `kube-system` show `Init:CrashLoopBackOff` (often the `clean-cilium-state` init container).
+
+What happened (root cause):
+
+- On Talos, the Cilium `clean-cilium-state` init container **must not** request the `SYS_MODULE` Linux capability.
+- If Cilium is installed without overriding capabilities, the default chart may include `SYS_MODULE` and containerd/runc fails the init container with an error like: `can't apply capabilities: operation not permitted`.
+- With no working CNI, Kubernetes keeps nodes `NotReady`.
+
+How it was resolved:
+
+1) Ensure you are talking to the correct cluster (set kubeconfig).
+
+From this repo, the kubeconfig is typically at `script/talos/kubeconfig`:
+
+```bash
+cd script/talos
+export KUBECONFIG=./kubeconfig
+```
+
+2) Apply the Talos-safe settings via an in-place upgrade.
+
+This keeps kube-proxy replacement enabled (Talos config in this repo disables kube-proxy) and fixes the init container capabilities:
+
+```bash
+cilium upgrade \
+  --version 1.18.1 \
+  --helm-set=ipam.mode=kubernetes \
+  --helm-set=kubeProxyReplacement=true \
+  --helm-set=bpf.autoMount.enabled=false \
+  --helm-set=bpf.hostRoot=/sys/fs/bpf \
+  --helm-set=cgroup.autoMount.enabled=false \
+  --helm-set=cgroup.hostRoot=/sys/fs/cgroup \
+  --helm-set=securityContext.capabilities.ciliumAgent="{CHOWN,KILL,NET_ADMIN,NET_RAW,IPC_LOCK,SYS_ADMIN,SYS_RESOURCE,DAC_OVERRIDE,FOWNER,SETGID,SETUID}" \
+  --helm-set=securityContext.capabilities.cleanCiliumState="{NET_ADMIN,SYS_ADMIN,SYS_RESOURCE}" \
+  --helm-set=l2announcements.enabled=true \
+  --helm-set=externalIPs.enabled=true \
+  --helm-set=gatewayAPI.enabled=true \
+  --helm-set=operator.replicas=1
+```
+
+3) Verify recovery.
+
+```bash
+cilium status
+kubectl -n kube-system get pods -l k8s-app=cilium -o wide
+kubectl get nodes -o wide
+```
+
+Expected result:
+
+- `cilium status` reports `Cilium: OK` and `Operator: OK`.
+- All `cilium` DaemonSet pods are `Running`.
+- Nodes transition to `Ready`.
+
 ## Destroying the VMs
 
 ### Option A: destroy using the original state (simplest)
@@ -231,7 +359,6 @@ Follow the step-by-step instructions in [destroy/README.md](destroy/README.md).
 - **Talos ISO not found**: ensure the exact `talos_iso_file` reference exists in Proxmox storage (example in this repo: `local:iso/nocloud-amd64.iso`).
 - **VM IDs collide**: `vmid` values must be unique in Proxmox.
 - **Script output doesn’t match your expectations**: [script/tfvars-to-talos-env.sh](script/tfvars-to-talos-env.sh) parses `nodes = [ ... ]` from the tfvars file; keep the `nodes` list in standard HCL formatting.
-
 ## Provider and versions
 
 - Terraform Proxmox provider: `bpg/proxmox` version `0.82.1` (pinned in [main.tf](main.tf) and [destroy/main.tf](destroy/main.tf)).

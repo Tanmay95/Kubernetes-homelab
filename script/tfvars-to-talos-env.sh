@@ -26,6 +26,7 @@ print_warning() {
 }
 
 TFVARS_FILE="$SCRIPT_DIR/../cluster.auto.tfvars"
+TFSTATE_FILE="$SCRIPT_DIR/../terraform.tfstate"
 OUTPUT_FILE="$SCRIPT_DIR/talenv.yaml"
 OUTPUT_FORMAT="yaml"
 VERBOSE=false
@@ -66,6 +67,23 @@ extract_tfvar_string() {
     local key="$1"
     local file="$2"
     sed -n -E "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]*)\".*/\1/p" "$file" | head -n 1
+}
+
+extract_tfstate_vm_mac() {
+        local vm_name="$1"
+
+        [[ -z "$vm_name" ]] && echo "" && return 0
+        [[ ! -f "$TFSTATE_FILE" ]] && echo "" && return 0
+        command -v jq >/dev/null 2>&1 || { echo ""; return 0; }
+
+        jq -r --arg NAME "$vm_name" '
+            .resources[]
+            | select(.type == "proxmox_virtual_environment_vm")
+            | .instances[]
+            | .attributes
+            | select(.name == $NAME)
+            | .network_device[0].mac_address // empty
+        ' "$TFSTATE_FILE" | head -n 1
 }
 
 compute_cluster_summary() {
@@ -300,28 +318,40 @@ generate_env_vars() {
                     # Generate role-based environment variables
                     case "$role" in
                         "controlplane")
+                            local mac
+                            mac="$(extract_tfstate_vm_mac "$name")"
+                            local idx="$control_plane_idx"
                             if [[ "$OUTPUT_FORMAT" == "yaml" ]]; then
-                                echo "TALOS_CONTROL_PLANE_IP_${control_plane_idx}: \"$ip\""
-                                echo "TALOS_CONTROL_PLANE_NAME_${control_plane_idx}: \"$name\""
+                                echo "TALOS_CONTROL_PLANE_IP_${idx}: \"$ip\""
+                                echo "TALOS_CONTROL_PLANE_NAME_${idx}: \"$name\""
+                                [[ -n "$mac" ]] && echo "TALOS_CONTROL_PLANE_MAC_${idx}: \"$mac\""
                             else
-                                echo "export TALOS_CONTROL_PLANE_IP_${control_plane_idx}=\"$ip\""
-                                echo "export TALOS_CONTROL_PLANE_NAME_${control_plane_idx}=\"$name\""
+                                echo "export TALOS_CONTROL_PLANE_IP_${idx}=\"$ip\""
+                                echo "export TALOS_CONTROL_PLANE_NAME_${idx}=\"$name\""
+                                [[ -n "$mac" ]] && echo "export TALOS_CONTROL_PLANE_MAC_${idx}=\"$mac\""
                             fi
                             if [[ "$VERBOSE" == true ]]; then
-                                print_info "Processed control plane ${control_plane_idx}: $name -> $ip" >&2
+                                print_info "Processed control plane ${idx}: $name -> $ip" >&2
+                                [[ -z "$mac" ]] && print_warning "MAC not found in terraform.tfstate for $name" >&2
                             fi
                             ((control_plane_idx+=1))
                             ;;
                         "worker")
+                            local mac
+                            mac="$(extract_tfstate_vm_mac "$name")"
+                            local idx="$worker_idx"
                             if [[ "$OUTPUT_FORMAT" == "yaml" ]]; then
-                                echo "TALOS_WORKER_IP_${worker_idx}: \"$ip\""
-                                echo "TALOS_WORKER_NAME_${worker_idx}: \"$name\""
+                                echo "TALOS_WORKER_IP_${idx}: \"$ip\""
+                                echo "TALOS_WORKER_NAME_${idx}: \"$name\""
+                                [[ -n "$mac" ]] && echo "TALOS_WORKER_MAC_${idx}: \"$mac\""
                             else
-                                echo "export TALOS_WORKER_IP_${worker_idx}=\"$ip\""
-                                echo "export TALOS_WORKER_NAME_${worker_idx}=\"$name\""
+                                echo "export TALOS_WORKER_IP_${idx}=\"$ip\""
+                                echo "export TALOS_WORKER_NAME_${idx}=\"$name\""
+                                [[ -n "$mac" ]] && echo "export TALOS_WORKER_MAC_${idx}=\"$mac\""
                             fi
                             if [[ "$VERBOSE" == true ]]; then
-                                print_info "Processed worker ${worker_idx}: $name -> $ip" >&2
+                                print_info "Processed worker ${idx}: $name -> $ip" >&2
+                                [[ -z "$mac" ]] && print_warning "MAC not found in terraform.tfstate for $name" >&2
                             fi
                             ((worker_idx+=1))
                             ;;

@@ -1,0 +1,5 @@
+---
+# SOPS config for files in script/
+# This tells sops which key(s) to use when encrypting new files.
+creation_rules:
+  - age: "age1vuey2srccsdngqwv7f9gg9kh96j3duvhnhzqwzu2z07mrmfz94gqg5se3a"
