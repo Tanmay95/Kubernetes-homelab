@@ -11,7 +11,7 @@ Important scope note (based on the code in this repo): Terraform **creates VMs a
 
 ## What Terraform is doing here
 
-Terraform (in [main.tf](main.tf) and [locals.tf](locals.tf)):
+Terraform (in [terraform/main.tf](terraform/main.tf) and [terraform/locals.tf](terraform/locals.tf)):
 
 - Connects to Proxmox via the `bpg/proxmox` provider (version pinned in Terraform config).
 - Creates one `proxmox_virtual_environment_vm` per entry in `var.nodes`.
@@ -30,27 +30,38 @@ Terraform (in [main.tf](main.tf) and [locals.tf](locals.tf)):
   - Additional disk format: `file_format = "raw"`
   - CD-ROM ISO from `talos_iso_file` (or a derived default if you don’t set it)
 
-Outputs in [main.tf](main.tf):
+Outputs in [terraform/main.tf](terraform/main.tf):
 
 - `vm_details`: VMID, role, cores, memory, and the **IP value you provided in tfvars**.
 - `node_roles`: the list of node names by role.
 
 ## Repository layout
 
-- Root Terraform (create VMs)
-  - [main.tf](main.tf)
-  - [variables.tf](variables.tf)
-  - [locals.tf](locals.tf)
-  - [cluster.auto.tfvars](cluster.auto.tfvars) (example config currently checked in)
+This repository follows a GitOps-friendly structure, separating infrastructure provisioning (Terraform), OS configuration (Talos), and applications (ArgoCD/Manifests).
 
-- Helper script (generate Talos/talhelper environment file)
-  - [script/tfvars-to-talos-env.sh](script/tfvars-to-talos-env.sh)
-  - [script/talenv.yaml](script/talenv.yaml) (generated output)
+### 1. Provisioning (`/terraform`)
+Contains all Terraform code to provision the Proxmox VMs.
+- [terraform/main.tf](terraform/main.tf): Main resource definitions.
+- [terraform/variables.tf](terraform/variables.tf): Input variable definitions.
+- [terraform/cluster.auto.tfvars](terraform/cluster.auto.tfvars): Your specific cluster configuration (nodes, resources).
+- [terraform/destroy/](terraform/destroy/): Separate workflow to destroy VMs without state.
 
-- Destroy workflow (when you don’t have the original state)
-  - [destroy/main.tf](destroy/main.tf)
-  - [destroy/variables.tf](destroy/variables.tf)
-  - [destroy/README.md](destroy/README.md)
+### 2. OS Configuration (`/talos`)
+Contains Talos Linux configuration, secrets, and generated files.
+- [talos/talconfig.yaml](talos/talconfig.yaml): Main Talos configuration file (input for talhelper).
+- [talos/talsecret.sops.yaml](talos/talsecret.sops.yaml): Encrypted secrets for the cluster.
+- [talos/clusterconfig/](talos/clusterconfig/): Generated machine configs applied to nodes.
+- [talos/kubeconfig](talos/kubeconfig): Cluster access credentials.
+
+### 3. Applications (`/apps` & `/argocd`)
+Contains Kubernetes manifests and GitOps configurations.
+- [apps/infrastructure/](apps/infrastructure/): System-level applications (e.g., Cilium, Cert-Manager).
+- [apps/tenants/](apps/tenants/): User-level applications.
+- [argocd/](argocd/): ArgoCD installation manifests and "App of Apps" definitions.
+
+### 4. Scripts (`/scripts`)
+Helper scripts for automation.
+- [scripts/tfvars-to-talos-env.sh](scripts/tfvars-to-talos-env.sh): Utility to sync Terraform variables to Talos environment.
 
 ## Inputs (what you must set)
 
