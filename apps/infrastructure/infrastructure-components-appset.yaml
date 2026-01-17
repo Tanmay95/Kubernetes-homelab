@@ -20,8 +20,6 @@ spec:
     spec:
       project: infrastructure
       source:
-        plugin:
-          name: kustomize-build-with-helm
         repoURL: https://github.com/Tanmay95/Kubernetes-homelab.git
         targetRevision: HEAD
         path: '{{path}}'
