@@ -1,0 +1,20 @@
+# HomeLab optimized values for metrics-server
+args:
+  # Essential for HomeLabs using self-signed certs or IPs
+  - --kubelet-insecure-tls
+  # Use internal IP preference
+  - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+
+apiService:
+  create: true
+
+# Replicas 1 is sufficient for HomeLab; 2 for HA
+replicas: 1
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 200Mi

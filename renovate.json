@@ -1,0 +1,73 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:enableMajor",
+    ":disableRateLimiting",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergeBranch"
+  ],
+  "dependencyDashboardTitle": "Renovate Dashboard 🤖",
+  "suppressNotifications": ["prEditedNotification", "prIgnoreNotification"],
+  "rebaseWhen": "conflicted",
+  "schedule": ["every weekend"],
+  "flux": {
+    "fileMatch": ["apps/.+\\.ya?ml$"]
+  },
+  "helm-values": {
+    "fileMatch": ["apps/.+\\.ya?ml$"]
+  },
+  "kubernetes": {
+    "fileMatch": ["apps/.+\\.ya?ml$", "talos/.+\\.ya?ml$"]
+  },
+  "regexManagers": [
+    {
+      "description": "Process Helm chart versions in kustomization.yaml",
+      "fileMatch": ["apps/.+kustomization\\.ya?ml$"],
+      "matchStrings": [
+        "# renovate: datasource=helm depName=(?<depName>[\\S]+) repository=(?<registryUrl>[\\S]+)\\n.*?version: (?<currentValue>[\\S]+)"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "description": "Process GitHub releases for container images",
+      "fileMatch": ["apps/.+\\.ya?ml$"],
+      "matchStrings": [
+        "# renovate: datasource=github-releases depName=(?<depName>[\\S]+)\\n.*?(?:tag|version): (?<currentValue>[\\S]+)"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Process Talos and Kubernetes versions",
+      "fileMatch": ["talos/talconfig\\.ya?ml$"],
+      "matchStrings": [
+        "# renovate: datasource=docker depName=(?<depName>[\\S]+)\\n(?:talosVersion|kubernetesVersion): (?<currentValue>[\\S]+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Auto-merge minor and patch updates",
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "description": "Group Cilium updates",
+      "matchPackagePatterns": ["cilium"],
+      "groupName": "Cilium"
+    },
+    {
+      "description": "Group ArgoCD updates",
+      "matchPackagePatterns": ["argo"],
+      "groupName": "ArgoCD"
+    },
+    {
+      "description": "Group cert-manager updates",
+      "matchPackagePatterns": ["cert-manager"],
+      "groupName": "Cert-Manager"
+    }
+  ]
+}

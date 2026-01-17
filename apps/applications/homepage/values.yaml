@@ -1,0 +1,28 @@
+# Homepage - A modern dashboard for your HomeLab
+# https://gethomepage.dev/
+
+image:
+  repository: ghcr.io/gethomepage/homepage
+  tag: v0.10.9 # renovate: datasource=github-releases depName=gethomepage/homepage
+
+# Use ConfigMap for configuration (mounted separately)
+config:
+
+enableRbac: true
+
+serviceAccount:
+  create: true
+  name: homepage
+
+# Resource limits for HomeLab
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+ingress:
+  main:
+    enabled: false # We use Gateway API

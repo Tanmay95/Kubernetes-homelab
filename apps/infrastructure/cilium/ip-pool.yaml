@@ -1,8 +1,0 @@
-apiVersion: cilium.io/v2alpha1
-kind: CiliumLoadBalancerIPPool
-metadata:
-  name: main-pool
-spec:
-  blocks:
-  - cidr: "192.168.101.16/28" # /28 boundary aligned. Usable IPs: 192.168.101.17 - 192.168.101.30
-  allowFirstLastIPs: false # Reserve network (.16) and broadcast (.31)

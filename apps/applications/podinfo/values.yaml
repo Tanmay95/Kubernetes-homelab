@@ -1,0 +1,26 @@
+# Podinfo - Demo application for testing your cluster
+# https://github.com/stefanprodan/podinfo
+
+replicaCount: 2
+
+# UI Configuration
+ui:
+  color: "#34577c"
+  message: "Welcome to Starbase HomeLab!"
+  logo: ""
+
+# Resource limits optimized for HomeLab
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# Enable all features for testing
+serviceMonitor:
+  enabled: false # Enable when you add monitoring stack
+
+ingress:
+  enabled: false # We use Gateway API instead
