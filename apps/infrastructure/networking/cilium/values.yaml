@@ -14,7 +14,7 @@ cluster:
 # API server reachable from Cilium agents (control-plane IP from Terraform)
 # Set to your control-plane IP or use k8s.apiServerURLs for HA
 kubeProxyReplacement: true
-k8sServiceHost: 192.168.10.101
+k8sServiceHost: 192.168.1.112
 k8sServicePort: 6443
 cgroup:
   autoMount:
