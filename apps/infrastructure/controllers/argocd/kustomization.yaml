@@ -9,7 +9,7 @@ resources:
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm
-    version: 8.3.0
+    version: 9.3.4 # renovate: datasource=helm depName=argo-cd repository=https://argoproj.github.io/argo-helm
     releaseName: "argocd"
     namespace: argocd
     valuesFile: values.yaml

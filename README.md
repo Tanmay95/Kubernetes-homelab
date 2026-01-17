@@ -63,6 +63,348 @@ Contains Kubernetes manifests and GitOps configurations.
 Helper scripts for automation.
 - [scripts/tfvars-to-talos-env.sh](scripts/tfvars-to-talos-env.sh): Utility to sync Terraform variables to Talos environment.
 
+---
+
+## ArgoCD GitOps Setup
+
+This section covers the complete ArgoCD deployment and GitOps configuration for managing the Kubernetes cluster.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        ArgoCD                                    │
+│  (Watches Git Repository for Changes)                           │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+        ┌─────────────┴─────────────┐
+        ▼                           ▼
+┌───────────────────┐     ┌───────────────────────────────┐
+│ Infrastructure    │     │ Applications                  │
+│ ApplicationSet    │     │ ApplicationSet                │
+└────────┬──────────┘     └──────────────┬────────────────┘
+         │                               │
+    ┌────┴────┐                    ┌─────┴─────┐
+    ▼         ▼                    ▼           ▼
+┌────────┐ ┌────────────┐    ┌─────────┐ ┌──────────┐
+│Network │ │Controllers │    │ Podinfo │ │ Homepage │
+└────────┘ └────────────┘    └─────────┘ └──────────┘
+    │           │
+    ▼           ▼
+ Cilium     ArgoCD
+ Gateway    Cert-Manager
+            Metrics-Server
+```
+
+### Directory Structure
+
+```
+apps/
+├── infrastructure/
+│   ├── controllers/
+│   │   ├── argocd/           # ArgoCD Helm deployment
+│   │   ├── cert-manager/     # TLS certificate management
+│   │   └── metrics-server/   # HPA metrics provider
+│   ├── networking/
+│   │   ├── cilium/           # CNI with L2 announcements
+│   │   └── gateway/          # Gateway API configuration
+│   └── infrastructure-components-appset.yaml
+└── applications/
+    ├── podinfo/              # Demo application with HPA
+    ├── homepage/             # Dashboard for services
+    └── applications-appset.yaml
+```
+
+### Prerequisites
+
+Before deploying ArgoCD, ensure:
+
+1. **Kubernetes cluster is running** (Talos nodes are `Ready`)
+2. **Cilium CNI is installed** and functioning
+3. **kubectl access** is configured:
+   ```bash
+   export KUBECONFIG=/home/ansible/terraform-proxmox/talos/kubeconfig
+   ```
+
+### Step 1: Create ArgoCD Namespace
+
+```bash
+kubectl create namespace argocd
+```
+
+### Step 2: Install ArgoCD CRDs
+
+ArgoCD Helm chart v9.x (ArgoCD v3.x) requires CRDs to be installed separately:
+
+```bash
+kubectl apply -k "https://github.com/argoproj/argo-cd/manifests/crds?ref=v3.1.0"
+```
+
+This creates the following CRDs:
+- `applications.argoproj.io`
+- `applicationsets.argoproj.io`
+- `appprojects.argoproj.io`
+
+### Step 3: Deploy ArgoCD with Kustomize
+
+Navigate to the ArgoCD directory and apply:
+
+```bash
+kubectl apply -k apps/infrastructure/controllers/argocd/
+```
+
+This deploys:
+- ArgoCD server, repo-server, application-controller
+- ApplicationSet controller
+- Redis for caching
+- Dex server for SSO (optional)
+- ArgoCD projects configuration
+- HTTPRoute for Gateway API ingress
+
+### Step 4: Verify Deployment
+
+Check all pods are running:
+
+```bash
+kubectl get pods -n argocd
+```
+
+Expected output (all pods should be `Running` or `Ready`):
+```
+NAME                                               READY   STATUS
+argocd-application-controller-0                    1/1     Running
+argocd-applicationset-controller-xxx               1/1     Running
+argocd-dex-server-xxx                              1/1     Running
+argocd-redis-xxx                                   1/1     Running
+argocd-repo-server-xxx                             1/1     Running
+argocd-server-xxx                                  1/1     Running
+```
+
+### Step 5: Access ArgoCD UI
+
+**Option A: Port Forward (Quick Access)**
+
+```bash
+kubectl port-forward svc/argocd-server -n argocd 8080:80
+```
+
+Then open: http://localhost:8080
+
+**Option B: Via Gateway API (Production)**
+
+The HTTPRoute is configured for `argocd.starbasestudio.uk`. Configure DNS:
+
+1. **Local hosts file** (for testing):
+   ```bash
+   echo "192.168.1.101 argocd.starbasestudio.uk" | sudo tee -a /etc/hosts
+   ```
+
+2. **Cloudflare DNS-only** (for production internal access):
+   - Add A record: `argocd.starbasestudio.uk` → `192.168.1.101`
+   - Ensure proxy is **disabled** (DNS-only, gray cloud)
+
+### Step 6: Get Admin Password
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+```
+
+Login credentials:
+- **Username**: `admin`
+- **Password**: (output from above command)
+
+### Step 7: Configure Git Repository
+
+After logging in to ArgoCD UI:
+
+1. Go to **Settings** → **Repositories**
+2. Click **Connect Repo**
+3. Enter repository details:
+   - **Repository URL**: `https://github.com/Tanmay95/Kubernetes-homelab.git`
+   - **Username**: (your GitHub username)
+   - **Password**: (GitHub Personal Access Token with repo scope)
+
+Or via CLI:
+
+```bash
+argocd login localhost:8080 --insecure
+argocd repo add https://github.com/Tanmay95/Kubernetes-homelab.git \
+  --username <github-username> \
+  --password <github-pat>
+```
+
+### ArgoCD Configuration Files
+
+#### Kustomization ([apps/infrastructure/controllers/argocd/kustomization.yaml](apps/infrastructure/controllers/argocd/kustomization.yaml))
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+
+resources:
+  - ns.yaml
+  - http-route.yaml
+  - projects.yaml
+
+helmCharts:
+  - name: argo-cd
+    repo: https://argoproj.github.io/argo-helm
+    version: 9.3.4  # renovate: datasource=helm
+    releaseName: argocd
+    namespace: argocd
+    valuesFile: values.yaml
+```
+
+#### Values ([apps/infrastructure/controllers/argocd/values.yaml](apps/infrastructure/controllers/argocd/values.yaml))
+
+Key configurations:
+- **High Availability**: Disabled (suitable for homelab)
+- **Insecure Mode**: Enabled (TLS termination at Gateway)
+- **Redis**: HA disabled for single-node setup
+
+#### Projects ([apps/infrastructure/controllers/argocd/projects.yaml](apps/infrastructure/controllers/argocd/projects.yaml))
+
+Defines ArgoCD projects:
+- **infrastructure**: System-level applications (Cilium, cert-manager, etc.)
+- **applications**: User applications (podinfo, homepage, etc.)
+
+### ApplicationSets
+
+ArgoCD uses ApplicationSets to automatically discover and deploy applications from Git directories.
+
+#### Infrastructure ApplicationSet
+
+Location: [apps/infrastructure/infrastructure-components-appset.yaml](apps/infrastructure/infrastructure-components-appset.yaml)
+
+Watches:
+- `apps/infrastructure/networking/*` (Cilium, Gateway)
+- `apps/infrastructure/controllers/*` (ArgoCD, cert-manager, metrics-server)
+
+#### Applications ApplicationSet
+
+Location: [apps/applications/applications-appset.yaml](apps/applications/applications-appset.yaml)
+
+Watches:
+- `apps/applications/*` (podinfo, homepage, etc.)
+
+### Deployed Applications
+
+| Application | Namespace | Purpose | Access URL |
+|-------------|-----------|---------|------------|
+| ArgoCD | argocd | GitOps controller | argocd.starbasestudio.uk |
+| Cilium | kube-system | CNI with L2 announcements | - |
+| Gateway | gateway | Ingress via Gateway API | - |
+| Metrics Server | metrics-server | HPA metrics | - |
+| Podinfo | podinfo | Demo app with HPA | podinfo.starbasestudio.uk |
+| Homepage | homepage | Service dashboard | homepage.starbasestudio.uk |
+
+### Network Configuration
+
+#### IP Allocation (Cilium L2 Pool)
+
+| Service | IP Address | Purpose |
+|---------|------------|---------|
+| Internal Gateway | 192.168.1.101 | Internal services (ArgoCD, Homepage) |
+| External Gateway | 192.168.1.102 | External/public services |
+| Pool Range | 192.168.1.100/28 | Available IPs: .100-.115 |
+
+#### Gateway Classes
+
+- **cilium-internal**: For internal-only services
+- **cilium-external**: For externally accessible services
+
+### Troubleshooting ArgoCD
+
+#### Pods CrashLoopBackOff with CRD errors
+
+**Symptom**: ArgoCD pods fail with `failed to list *v1alpha1.Application`
+
+**Solution**: Install CRDs manually:
+```bash
+kubectl apply -k "https://github.com/argoproj/argo-cd/manifests/crds?ref=v3.1.0"
+kubectl rollout restart deployment -n argocd argocd-server argocd-applicationset-controller
+```
+
+#### Cannot connect to ArgoCD UI
+
+**Check pods are running**:
+```bash
+kubectl get pods -n argocd
+```
+
+**Check service**:
+```bash
+kubectl get svc -n argocd argocd-server
+```
+
+**Check HTTPRoute**:
+```bash
+kubectl get httproute -n argocd
+```
+
+#### Application sync failures
+
+**Check application status**:
+```bash
+kubectl get applications -n argocd
+```
+
+**View sync details**:
+```bash
+argocd app get <app-name>
+argocd app sync <app-name>
+```
+
+#### Repository connection issues
+
+**Test repository access**:
+```bash
+argocd repo list
+```
+
+**Re-add repository if needed**:
+```bash
+argocd repo rm https://github.com/Tanmay95/Kubernetes-homelab.git
+argocd repo add https://github.com/Tanmay95/Kubernetes-homelab.git \
+  --username <username> --password <token>
+```
+
+### Automated Updates with Renovate
+
+This repository includes [renovate.json](renovate.json) for automated dependency updates:
+
+- **Schedule**: Weekly on weekends
+- **Auto-merge**: Minor and patch versions
+- **Grouped updates**: Cilium, ArgoCD, cert-manager
+
+To enable:
+1. Install [Renovate GitHub App](https://github.com/apps/renovate)
+2. Grant access to your repository
+3. Renovate will automatically create PRs for updates
+
+### Useful Commands
+
+```bash
+# View all ArgoCD resources
+kubectl get all -n argocd
+
+# Watch application sync status
+watch kubectl get applications -n argocd
+
+# View ArgoCD server logs
+kubectl logs -n argocd deployment/argocd-server
+
+# Force sync all applications
+argocd app sync --all
+
+# Get ArgoCD CLI
+curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+chmod +x argocd && sudo mv argocd /usr/local/bin/
+```
+
+---
+
 ## Inputs (what you must set)
 
 Terraform variables are defined in [variables.tf](variables.tf). This repo expects, at minimum:
