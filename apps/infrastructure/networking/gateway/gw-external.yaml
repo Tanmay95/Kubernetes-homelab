@@ -16,15 +16,3 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    - name: https
-      protocol: HTTPS
-      port: 443
-      hostname: "*.starbasestudio.uk"
-      tls:
-        certificateRefs:
-          - name: cert-starbase
-            kind: Secret
-            group: "" # required
-      allowedRoutes:
-        namespaces:
-          from: All

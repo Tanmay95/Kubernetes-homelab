@@ -17,11 +17,8 @@ kubeProxyReplacement: true
 k8sServiceHost: 192.168.1.112
 k8sServicePort: 6443
 
-# Homelab safety: keep Cilium off the very small control-plane node.
-# Your workers already have `node-type=worker` labels.
-# If you ever want to run workloads on the control-plane, remove this and add more RAM.
-nodeSelector:
-  node-type: worker
+# In kube-proxy-free mode, Cilium should run on all nodes (including control-plane)
+# so ClusterIP/webhook/service routing works reliably.
 cgroup:
   autoMount:
     enabled: false
@@ -36,8 +33,6 @@ ipam:
 operator:
   rollOutPods: true
   replicas: 1
-  nodeSelector:
-    node-type: worker
   resources:
     limits:
       cpu: 500m
