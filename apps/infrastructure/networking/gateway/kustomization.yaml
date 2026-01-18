@@ -4,7 +4,9 @@ kind: Kustomization
 resources:
 
   # Gateway resources
-  - gateway-class.yaml
+  # NOTE: GatewayClass "cilium" is created by the Cilium Helm chart when Gateway API is enabled.
+  # Keeping it here causes Argo CD SharedResourceWarning because two Applications manage the same object.
+  # - gateway-class.yaml
   - ns.yaml
   - gw-external.yaml
   - gw-internal.yaml
