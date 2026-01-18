@@ -8,9 +8,11 @@ resources:
   # Keeping it here causes Argo CD SharedResourceWarning because two Applications manage the same object.
   # - gateway-class.yaml
   - ns.yaml
+  - issuer-selfsigned.yaml
+  - cert-starbase.yaml
   - gw-external.yaml
   - gw-internal.yaml
-  # - cert-starbase.yaml
+
 
 
 generatorOptions:
