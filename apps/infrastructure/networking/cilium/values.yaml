@@ -51,7 +51,7 @@ resources:
     memory: 1Gi
   requests:
     cpu: 200m
-    memory: 512Mi
+    memory: 256Mi
 # Set debug to false for normal operations (enable temporarily when troubleshooting).
 debug:
   enabled: false
