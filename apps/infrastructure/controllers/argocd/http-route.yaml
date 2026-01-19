@@ -9,7 +9,7 @@ spec:
       kind: Gateway
       name: gateway-internal
       namespace: gateway
-      sectionName: http
+      sectionName: https
   hostnames:
     - "argocd.starbasestudio.uk"
   rules:
