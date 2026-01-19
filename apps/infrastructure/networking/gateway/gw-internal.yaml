@@ -25,8 +25,9 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: argocd-tls-secret
+          - group: ""
             kind: Secret
+            name: argocd-tls-secret
       allowedRoutes:
         namespaces:
           from: All
