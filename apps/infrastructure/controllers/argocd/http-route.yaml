@@ -10,6 +10,11 @@ spec:
       name: gateway-internal
       namespace: gateway
       sectionName: https
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: gateway-external
+      namespace: gateway
+      sectionName: https
   hostnames:
     - "argocd.starbasestudio.uk"
   rules:
@@ -21,5 +26,5 @@ spec:
         - group: ""
           kind: Service
           name: argocd-server
-          port: 443
+          port: 80
           weight: 1
