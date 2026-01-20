@@ -5,8 +5,9 @@ image:
   repository: ghcr.io/gethomepage/homepage
   tag: v0.10.9 # renovate: datasource=github-releases depName=gethomepage/homepage
 
-# Use ConfigMap for configuration (mounted separately)
+# Use existing ConfigMap for configuration
 config:
+  useExistingConfigMap: homepage
 
 enableRbac: true
 
