@@ -13,7 +13,6 @@ config:
 # localhost:3000 and 127.0.0.1:3000 are always included by default
 env:
   HOMEPAGE_ALLOWED_HOSTS: "home.starbasestudio.uk,localhost:3000,homepage.homepage.svc.cluster.local:3000"
-  HOMEPAGE_VAR_ARGOCD_API_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhcmdvY2QiLCJzdWIiOiJob21lcGFnZTphcGlLZXkiLCJuYmYiOjE3Njg5NDY2MzgsImlhdCI6MTc2ODk0NjYzOCwianRpIjoiZGRiZDhmY2QtNzQ2Ny00MTBjLWIzNDktYjIyZDUxMTY0NTljIn0.VYVn0WUd7TJiQiyzDG9811Q7RvhRgmyy9gJo36K_OdU"
 
 enableRbac: true
 
