@@ -37,6 +37,10 @@ data:
             description: GitOps CD
             namespace: argocd
             app: argocd-server
+            widget:
+              type: argocd
+              url: https://argocd-server.argocd.svc.cluster.local
+              key: {{HOMEPAGE_VAR_ARGOCD_API_KEY}}
         - Hubble UI:
             icon: cilium.png
             href: https://hubble.starbasestudio.uk
