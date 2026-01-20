@@ -9,6 +9,10 @@ image:
 config:
   useExistingConfigMap: homepage
 
+# Required since v1.0 - allowed hosts for security
+env:
+  HOMEPAGE_ALLOWED_HOSTS: "home.starbasestudio.uk"
+
 enableRbac: true
 
 serviceAccount:
