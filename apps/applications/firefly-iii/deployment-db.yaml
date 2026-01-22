@@ -63,5 +63,6 @@ spec:
             periodSeconds: 5
       volumes:
         - name: db-data
-          persistentVolumeClaim:
-            claimName: firefly-iii-db-pvc
+          emptyDir: {}
+          # Note: Using emptyDir - data will be lost on pod restart
+          # For production, configure a storage provisioner

@@ -106,5 +106,6 @@ spec:
             periodSeconds: 10
       volumes:
         - name: upload-data
-          persistentVolumeClaim:
-            claimName: firefly-iii-upload-pvc
+          emptyDir: {}
+          # Note: Using emptyDir - uploads will be lost on pod restart
+          # For production, configure a storage provisioner
