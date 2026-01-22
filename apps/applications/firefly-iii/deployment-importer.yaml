@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firefly-iii-importer
+  namespace: firefly-iii
+  labels:
+    app.kubernetes.io/name: firefly-iii-importer
+    app.kubernetes.io/component: importer
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: firefly-iii-importer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: firefly-iii-importer
+        app.kubernetes.io/component: importer
+    spec:
+      containers:
+        - name: importer
+          image: fireflyiii/data-importer:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: FIREFLY_III_URL
+              value: "http://firefly-iii:8080"
+            - name: VANITY_URL
+              value: "https://firefly.starbasestudio.uk"
+            - name: TRUSTED_PROXIES
+              value: "**"
+            - name: TZ
+              value: "America/Detroit"
+            # Enable JSON files for import configurations
+            - name: JSON_CONFIGURATION_DIR
+              value: "/import-configs"
+            - name: CAN_POST_AUTOIMPORT
+              value: "true"
+            - name: CAN_POST_FILES
+              value: "true"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
