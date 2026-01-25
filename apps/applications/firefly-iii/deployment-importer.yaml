@@ -43,6 +43,18 @@ spec:
               value: "true"
             - name: CAN_POST_FILES
               value: "true"
+            # Laravel/session configuration
+            - name: APP_ENV
+              value: "production"
+            - name: APP_DEBUG
+              value: "false"
+            - name: LOG_CHANNEL
+              value: "stack"
+          volumeMounts:
+            - name: import-storage
+              mountPath: /var/www/html/storage/app
+            - name: import-temp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 50m
@@ -62,3 +74,8 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
+      volumes:
+        - name: import-storage
+          emptyDir: {}
+        - name: import-temp
+          emptyDir: {}
