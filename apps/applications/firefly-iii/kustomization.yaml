@@ -8,6 +8,8 @@ resources:
   - deployment.yaml
   - deployment-importer.yaml
   - service.yaml
-  - httproute.yaml
+
+# NOTE: HTTPRoutes are intentionally not applied here.
+# This overlay is configured for internal-only access (use `kubectl port-forward`).
 
 namespace: firefly-iii
