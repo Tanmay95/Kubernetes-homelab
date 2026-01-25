@@ -36,9 +36,9 @@ spec:
               value: "**"
             - name: TZ
               value: "America/Detroit"
-            # Enable JSON files for import configurations
+            # Enable JSON files for import configurations (use storage subdirectory)
             - name: JSON_CONFIGURATION_DIR
-              value: "/import-configs"
+              value: "/var/www/html/storage/configurations"
             - name: CAN_POST_AUTOIMPORT
               value: "true"
             - name: CAN_POST_FILES
