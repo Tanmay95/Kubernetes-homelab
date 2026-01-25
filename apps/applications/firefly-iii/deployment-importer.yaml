@@ -30,6 +30,8 @@ spec:
               value: "http://firefly-iii:8080"
             - name: VANITY_URL
               value: "http://localhost:8080"
+            - name: IMPORTER_VANITY_URL
+              value: "http://localhost:1871"
             - name: TRUSTED_PROXIES
               value: "**"
             - name: TZ
