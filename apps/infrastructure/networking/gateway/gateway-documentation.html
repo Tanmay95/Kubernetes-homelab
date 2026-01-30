@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Gateway API Configuration Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-left: 5px solid #764ba2;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #667eea;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .file-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .file-card h3 {
+            margin-top: 0;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+        }
+        .file-icon {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+        .description {
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .use-case {
+            margin: 15px 0;
+            padding: 15px;
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+        }
+        .use-case h4 {
+            color: #2196F3;
+            margin-bottom: 10px;
+        }
+        .key-points {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .key-points h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+        .intro {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 2px solid #667eea;
+        }
+        .architecture {
+            background: #f0f8ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .benefit {
+            display: inline-block;
+            background: #d4edda;
+            color: #155724;
+            padding: 5px 12px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 0.9em;
+            border: 1px solid #c3e6cb;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e9ecef;
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Kubernetes Gateway API Configuration Documentation</h1>
+        
+        <div class="intro">
+            <h2>Overview</h2>
+            <p>This directory contains the Kubernetes Gateway API configuration for managing ingress traffic in a Kubernetes cluster. 
+            The Gateway API provides a more expressive and extensible way to route traffic compared to traditional Ingress resources. 
+            This setup uses <strong>Cilium</strong> as the Gateway controller and <strong>cert-manager</strong> for TLS certificate management.</p>
+            
+            <div class="architecture">
+                <h3>Architecture Components:</h3>
+                <ul>
+                    <li><strong>Gateway Controller:</strong> Cilium (io.cilium/gateway-controller)</li>
+                    <li><strong>Certificate Management:</strong> cert-manager with self-signed certificates</li>
+                    <li><strong>Domain:</strong> starbasestudio.uk (with wildcard support)</li>
+                    <li><strong>Network Separation:</strong> Internal (192.168.1.101) and External (192.168.1.102) gateways</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>📁 Configuration Files</h2>
+
+        <!-- ns.yaml -->
+        <div class="file-card">
+            <h3><span class="file-icon">ns.yaml</span> Namespace Definition</h3>
+            
+            <div class="description">
+                <strong>What it contains:</strong>
+                <p>Creates a dedicated Kubernetes namespace called <code>gateway</code> for all gateway-related resources.</p>
+            </div>
+
+            <div class="use-case">
+                <h4>Why it's useful:</h4>
+                <ul>
+                    <li><strong>Resource Isolation:</strong> Separates gateway infrastructure from application workloads</li>
+                    <li><strong>Security Boundaries:</strong> Provides RBAC and network policy boundaries</li>
+                    <li><strong>Organization:</strong> Groups all gateway components in a single logical unit</li>
+                    <li><strong>Management:</strong> Simplifies resource management and monitoring</li>
+                </ul>
+            </div>
+
+            <span class="benefit">Foundation</span>
+            <span class="benefit">Isolation</span>
+            <span class="benefit">Organization</span>
+        </div>
+
+        <!-- gateway-class.yaml -->
+        <div class="file-card">
+            <h3><span class="file-icon">gateway-class.yaml</span> GatewayClass Configuration</h3>
+            
+            <div class="description">
+                <strong>What it contains:</strong>
+                <p>Defines a <code>GatewayClass</code> resource named "cilium" that specifies Cilium as the controller for Gateway resources.</p>
+            </div>
+
+            <div class="key-points">
+                <h4>⚠️ Important Note:</h4>
+                <p>This file is currently commented out in <code>kustomization.yaml</code> because the Cilium Helm chart automatically creates 
+                the GatewayClass when Gateway API is enabled. Including it would cause ArgoCD SharedResourceWarning.</p>
+            </div>
+
+            <div class="use-case">
+                <h4>Why it's useful:</h4>
+                <ul>
+                    <li><strong>Controller Selection:</strong> Tells Kubernetes which controller manages Gateway resources</li>
+                    <li><strong>Abstraction Layer:</strong> Allows switching between different Gateway implementations</li>
+                    <li><strong>Multi-tenancy:</strong> Enables different teams to use different Gateway controllers</li>
+                    <li><strong>Configuration Templates:</strong> Provides default settings for all Gateways using this class</li>
+                </ul>
+            </div>
+
+            <span class="benefit">Controller Binding</span>
+            <span class="benefit">Flexibility</span>
+            <span class="benefit">Reference Only</span>
+        </div>
+
+        <!-- issuer-selfsigned.yaml -->
+        <div class="file-card">
+            <h3><span class="file-icon">issuer-selfsigned.yaml</span> Self-Signed Certificate Issuer</h3>
+            
+            <div class="description">
+                <strong>What it contains:</strong>
+                <p>Defines a cert-manager <code>Issuer</code> resource that creates self-signed TLS certificates for the gateway namespace.</p>
+            </div>
+
+            <div class="use-case">
+                <h4>Why it's useful:</h4>
+                <ul>
+                    <li><strong>Local Development:</strong> Provides HTTPS without needing external certificate authorities</li>
+                    <li><strong>Testing:</strong> Enables TLS testing in development/lab environments</li>
+                    <li><strong>No External Dependencies:</strong> Works without internet access or DNS validation</li>
+                    <li><strong>Quick Setup:</strong> Immediately available without waiting for DNS propagation or CA validation</li>
+                    <li><strong>Cost-Free:</strong> No need for paid certificates in testing environments</li>
+                </ul>
+            </div>
+
+            <div class="key-points">
+                <h4>💡 Production Consideration:</h4>
+                <p>For production environments, replace with a <code>ClusterIssuer</code> using Let's Encrypt or another trusted CA 
+                to avoid browser security warnings.</p>
+            </div>
+
+            <span class="benefit">Development</span>
+            <span class="benefit">Testing</span>
+            <span class="benefit">TLS Enabled</span>
+        </div>
+
+        <!-- cert-starbase.yaml -->
+        <div class="file-card">
+            <h3><span class="file-icon">cert-starbase.yaml</span> Wildcard TLS Certificate</h3>
+            
+            <div class="description">
+                <strong>What it contains:</strong>
+                <p>Defines a cert-manager <code>Certificate</code> resource that generates a wildcard TLS certificate for 
+                <code>*.starbasestudio.uk</code> and <code>starbasestudio.uk</code>, stored in a secret named <code>cert-starbase</code>.</p>
+            </div>
+
+            <div class="use-case">
+                <h4>Why it's useful:</h4>
+                <ul>
+                    <li><strong>Wildcard Coverage:</strong> Single certificate covers all subdomains (e.g., app1.starbasestudio.uk, app2.starbasestudio.uk)</li>
+                    <li><strong>Automatic Management:</strong> cert-manager handles certificate creation, renewal, and rotation</li>
+                    <li><strong>Security Best Practices:</strong> Uses RSA 2048-bit encryption and automatic key rotation</li>
+                    <li><strong>ArgoCD Integration:</strong> Sync wave annotation ensures proper deployment order (after issuer)</li>
+                    <li><strong>Reduced Complexity:</strong> One certificate for multiple services instead of per-service certificates</li>
+                    <li><strong>Auto-Renewal:</strong> Certificates automatically renewed before expiration</li>
+                </ul>
+            </div>
+
+            <div class="key-points">
+                <h4>🔐 Security Features:</h4>
+                <ul>
+                    <li><code>rotationPolicy: Always</code> - Rotates private key with each renewal for enhanced security</li>
+                    <li><code>revisionHistoryLimit: 1</code> - Keeps cluster clean by limiting old certificate requests</li>
+                    <li>Proper key usage settings for web server authentication</li>
+                </ul>
+            </div>
+
+            <span class="benefit">Wildcard SSL</span>
+            <span class="benefit">Auto-Renewal</span>
+            <span class="benefit">Security Hardened</span>
+        </div>
+
+        <!-- gw-internal.yaml -->
+        <div class="file-card">
+            <h3><span class="file-icon">gw-internal.yaml</span> Internal Gateway</h3>
+            
+            <div class="description">
+                <strong>What it contains:</strong>
+                <p>Defines an internal <code>Gateway</code> resource bound to IP address <code>192.168.1.101</code> that handles 
+                HTTP (port 80) and HTTPS (port 443) traffic for internal services.</p>
+            </div>
+
+            <div class="use-case">
+                <h4>Why it's useful:</h4>
+                <ul>
+                    <li><strong>Network Segmentation:</strong> Separates internal services from external-facing applications</li>
+                    <li><strong>Security Boundary:</strong> Internal gateway can have different firewall rules and access controls</li>
+                    <li><strong>ArgoCD Access:</strong> Specifically configured for ArgoCD UI at <code>argocd.starbasestudio.uk</code></li>
+                    <li><strong>HTTP to HTTPS:</strong> Supports both protocols for flexibility (can add HTTP redirect later)</li>
+                    <li><strong>Cross-Namespace Routing:</strong> <code>allowedRoutes: All</code> enables routing from any namespace</li>
+                    <li><strong>TLS Termination:</strong> Handles SSL/TLS decryption at the gateway level</li>
+                </ul>
+            </div>
+
+            <div class="key-points">
+                <h4>📍 Configuration Details:</h4>
+                <ul>
+                    <li><strong>IP Address:</strong> 192.168.1.101 (internal network)</li>
+                    <li><strong>Protocol Support:</strong> HTTP (80) and HTTPS (443)</li>
+                    <li><strong>TLS Mode:</strong> Terminate (gateway decrypts traffic)</li>
+                    <li><strong>Certificate:</strong> Uses separate <code>argocd-tls-secret</code> for ArgoCD</li>
+                </ul>
+            </div>
+
+            <span class="benefit">Internal Network</span>
+            <span class="benefit">ArgoCD Gateway</span>
+            <span class="benefit">TLS Termination</span>
+        </div>
+
+        <!-- gw-external.yaml -->
+        <div class="file-card">
+            <h3><span class="file-icon">gw-external.yaml</span> External Gateway</h3>
+            
+            <div class="description">
+                <strong>What it contains:</strong>
+                <p>Defines an external-facing <code>Gateway</code> resource bound to IP address <code>192.168.1.102</code> that handles 
+                HTTP (port 80) and HTTPS (port 443) traffic for public-facing applications using the wildcard certificate.</p>
+            </div>
+
+            <div class="use-case">
+                <h4>Why it's useful:</h4>
+                <ul>
+                    <li><strong>Public Access:</strong> Designated gateway for services accessible from outside the cluster</li>
+                    <li><strong>Wildcard Certificate:</strong> Uses <code>cert-starbase</code> to secure all subdomains</li>
+                    <li><strong>Multi-Application Support:</strong> Single gateway serves multiple applications via HTTPRoutes</li>
+                    <li><strong>Load Balancing:</strong> Cilium handles traffic distribution across backend pods</li>
+                    <li><strong>Protocol Support:</strong> Handles both HTTP and HTTPS with automatic TLS termination</li>
+                    <li><strong>Flexible Routing:</strong> Applications from any namespace can use this gateway</li>
+                    <li><strong>Production Ready:</strong> Configured with industry-standard ports and TLS settings</li>
+                </ul>
+            </div>
+
+            <div class="key-points">
+                <h4>📍 Configuration Details:</h4>
+                <ul>
+                    <li><strong>IP Address:</strong> 192.168.1.102 (external network)</li>
+                    <li><strong>Hostname Pattern:</strong> <code>*.starbasestudio.uk</code> (wildcard subdomain)</li>
+                    <li><strong>Certificate:</strong> <code>cert-starbase</code> (wildcard certificate)</li>
+                    <li><strong>TLS Mode:</strong> Terminate (gateway handles SSL/TLS)</li>
+                    <li><strong>Namespace Access:</strong> Routes from all namespaces allowed</li>
+                </ul>
+            </div>
+
+            <span class="benefit">Public Gateway</span>
+            <span class="benefit">Multi-App Support</span>
+            <span class="benefit">Production Ready</span>
+        </div>
+
+        <!-- kustomization.yaml -->
+        <div class="file-card">
+            <h3><span class="file-icon">kustomization.yaml</span> Kustomize Configuration</h3>
+            
+            <div class="description">
+                <strong>What it contains:</strong>
+                <p>Kustomize configuration file that orchestrates the deployment of gateway resources, defining which YAML files 
+                should be applied to the cluster.</p>
+            </div>
+
+            <div class="use-case">
+                <h4>Why it's useful:</h4>
+                <ul>
+                    <li><strong>Deployment Orchestration:</strong> Defines the order and grouping of resources to deploy</li>
+                    <li><strong>GitOps Integration:</strong> ArgoCD uses this to understand what resources to manage</li>
+                    <li><strong>Resource Management:</strong> Centralized control over which configurations are active</li>
+                    <li><strong>Environment Customization:</strong> Can be extended with overlays for different environments</li>
+                    <li><strong>Conflict Prevention:</strong> Comments explain why <code>gateway-class.yaml</code> is excluded</li>
+                    <li><strong>Name Consistency:</strong> <code>disableNameSuffixHash: true</code> ensures predictable resource names</li>
+                </ul>
+            </div>
+
+            <div class="key-points">
+                <h4>📦 Included Resources:</h4>
+                <ul>
+                    <li><code>ns.yaml</code> - Gateway namespace</li>
+                    <li><code>gw-external.yaml</code> - External gateway</li>
+                    <li><code>gw-internal.yaml</code> - Internal gateway</li>
+                    <li><code>gateway-class.yaml</code> - Commented out (managed by Cilium Helm chart)</li>
+                </ul>
+            </div>
+
+            <span class="benefit">Orchestration</span>
+            <span class="benefit">GitOps Ready</span>
+            <span class="benefit">Maintainable</span>
+        </div>
+
+        <h2>🏗️ Overall Architecture Benefits</h2>
+        <div class="architecture">
+            <h3>Why This Setup is Valuable:</h3>
+            <ul>
+                <li><strong>Modern Ingress Management:</strong> Gateway API is the successor to Kubernetes Ingress, offering more flexibility and features</li>
+                <li><strong>Network Segmentation:</strong> Separate internal/external gateways provide security and traffic management benefits</li>
+                <li><strong>Automated TLS:</strong> Certificate lifecycle managed automatically by cert-manager</li>
+                <li><strong>Cilium Integration:</strong> Leverages Cilium's advanced networking capabilities (eBPF-based)</li>
+                <li><strong>GitOps Workflow:</strong> All configuration is declarative and version-controlled</li>
+                <li><strong>Scalability:</strong> Easy to add new applications by creating HTTPRoute resources</li>
+                <li><strong>Multi-Tenancy:</strong> Different teams can deploy apps to different namespaces using the same gateways</li>
+                <li><strong>Production Path:</strong> Easy migration from self-signed to Let's Encrypt certificates</li>
+            </ul>
+        </div>
+
+        <h2>🔄 Typical Workflow</h2>
+        <div class="architecture">
+            <ol>
+                <li><strong>Namespace Creation:</strong> <code>ns.yaml</code> creates the gateway namespace</li>
+                <li><strong>Certificate Issuer:</strong> <code>issuer-selfsigned.yaml</code> creates the self-signed issuer</li>
+                <li><strong>Certificate Generation:</strong> <code>cert-starbase.yaml</code> requests and stores wildcard certificate</li>
+                <li><strong>Gateway Deployment:</strong> <code>gw-internal.yaml</code> and <code>gw-external.yaml</code> create gateway listeners</li>
+                <li><strong>Application Routing:</strong> Applications create HTTPRoute resources pointing to these gateways</li>
+                <li><strong>Traffic Flow:</strong> External traffic → Gateway → HTTPRoute → Service → Pods</li>
+            </ol>
+        </div>
+
+        <h2>🎯 Use Cases</h2>
+        <div class="file-card">
+            <h3>When to Use Each Gateway:</h3>
+            
+            <h4>Internal Gateway (192.168.1.101):</h4>
+            <ul>
+                <li>Administrative interfaces (ArgoCD, Kubernetes Dashboard)</li>
+                <li>Internal developer tools</li>
+                <li>Monitoring and observability dashboards</li>
+                <li>Services that should not be exposed externally</li>
+            </ul>
+
+            <h4>External Gateway (192.168.1.102):</h4>
+            <ul>
+                <li>Public-facing web applications</li>
+                <li>API endpoints for external consumers</li>
+                <li>Customer-facing services</li>
+                <li>Any service requiring internet accessibility</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>📚 Generated on January 27, 2026</p>
+            <p>Gateway API Configuration for starbasestudio.uk</p>
+            <p><em>Part of Proxmox Talos Lab Cluster Infrastructure</em></p>
+        </div>
+    </div>
+</body>
+</html>

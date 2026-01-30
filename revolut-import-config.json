@@ -1,0 +1,56 @@
+{
+    "version": 3,
+    "source": "ff3-importer-2.0.5",
+    "date": "d/m/Y H:i",
+    "default_account": 1,
+    "delimiter": "comma",
+    "headers": true,
+    "rules": true,
+    "skip_form": false,
+    "add_import_tag": true,
+    "roles": [
+        "_ignore",
+        "_ignore",
+        "_ignore",
+        "date",
+        "description",
+        "amount",
+        "_ignore",
+        "currency-code",
+        "notes",
+        "_ignore",
+        "_ignore",
+        "_ignore",
+        "_ignore",
+        "_ignore"
+    ],
+    "do_mapping": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+    ],
+    "mapping": {
+        "7": {
+            "GBP": 3
+        }
+    },
+    "duplicate_detection_method": "classic",
+    "ignore_duplicate_lines": false,
+    "unique_column_index": 0,
+    "unique_column_type": "description",
+    "flow": "file",
+    "content_type": "csv",
+    "conversion": true,
+    "ignore_duplicate_transactions": true
+}

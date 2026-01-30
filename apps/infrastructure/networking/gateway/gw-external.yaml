@@ -21,13 +21,13 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: "argocd.starbasestudio.uk"
+      hostname: "*.starbasestudio.uk"
       tls:
         mode: Terminate
         certificateRefs:
           - group: ""
             kind: Secret
-            name: argocd-tls-secret
+            name: cert-starbase
       allowedRoutes:
         namespaces:
           from: All
