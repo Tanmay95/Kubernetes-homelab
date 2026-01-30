@@ -15,3 +15,5 @@ kubeconfig
 .terraform.lock.hcl
 tfplan
 my-apps/
+.txt
+HOW-TO-ADD-NEW-APP.md

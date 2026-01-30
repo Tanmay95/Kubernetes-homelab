@@ -5,6 +5,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: proxmox-data-xfs
   resources:
     requests:
       storage: 1Gi

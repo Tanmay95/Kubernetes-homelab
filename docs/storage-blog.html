@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Storage in Kubernetes with Proxmox CSI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 2em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #764ba2;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        p {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            text-align: justify;
+        }
+
+        .highlight-box {
+            background: #f0f4ff;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .diagram {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .diagram-caption {
+            margin-top: 15px;
+            font-style: italic;
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+            font-size: 0.95em;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .step {
+            margin: 30px 0;
+            padding: 25px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-right: 15px;
+        }
+
+        .step-title {
+            display: inline-block;
+            color: #667eea;
+            font-size: 1.3em;
+            font-weight: bold;
+            vertical-align: middle;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .comparison-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .comparison-table tr:hover {
+            background: #f0f4ff;
+        }
+
+        .checkmark {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .crossmark {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        ul, ol {
+            margin-left: 40px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+            font-size: 1.05em;
+        }
+
+        .analogy-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .analogy-box h3 {
+            color: white;
+            margin-top: 0;
+        }
+
+        footer {
+            background: #2d2d2d;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+
+        .toc h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .toc li {
+            padding: 8px 0;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Understanding Storage in Kubernetes</h1>
+            <p>How Proxmox Provides Persistent Storage to Talos OS Kubernetes Cluster</p>
+        </header>
+
+        <div class="content">
+            <!-- Table of Contents -->
+            <div class="toc">
+                <h3>📑 Table of Contents</h3>
+                <ul>
+                    <li><a href="#introduction">Introduction - The Storage Problem</a></li>
+                    <li><a href="#analogy">Real-World Analogy</a></li>
+                    <li><a href="#components">The Players - Who Does What?</a></li>
+                    <li><a href="#architecture">Architecture - The Big Picture</a></li>
+                    <li><a href="#workflow">How It Works - Step by Step</a></li>
+                    <li><a href="#comparison">Why Proxmox CSI?</a></li>
+                    <li><a href="#example">Real Example - Grafana Storage</a></li>
+                    <li><a href="#conclusion">Conclusion</a></li>
+                </ul>
+            </div>
+
+            <!-- Introduction -->
+            <h2 id="introduction">🤔 The Storage Problem</h2>
+            
+            <div class="highlight-box">
+                <strong>Imagine this scenario:</strong> You deploy a Grafana dashboard in Kubernetes. It saves all your graphs, settings, and data. Then the pod restarts... and everything is gone! 😱
+            </div>
+
+            <p>
+                This happens because containers are <strong>ephemeral</strong> (temporary by nature). When a container dies, 
+                everything inside it disappears. But we need our data to persist! This is where <strong>persistent storage</strong> comes in.
+            </p>
+
+            <p>
+                In our setup, we have:
+            </p>
+            <ul>
+                <li><strong>Proxmox VE</strong> - A hypervisor that manages virtual machines (the physical host)</li>
+                <li><strong>Talos OS VMs</strong> - Lightweight Linux OS running on Proxmox (3 VMs: 1 control plane + 2 workers)</li>
+                <li><strong>Kubernetes</strong> - Container orchestration running on Talos OS</li>
+                <li><strong>Applications</strong> - Like Grafana, that need to save data permanently</li>
+            </ul>
+
+            <p>
+                The question is: <strong>How do we give Kubernetes pods access to persistent storage from Proxmox?</strong>
+            </p>
+
+            <!-- Real World Analogy -->
+            <h2 id="analogy">🏢 Real-World Analogy</h2>
+
+            <div class="analogy-box">
+                <h3>Think of it like a Hotel System</h3>
+                <p><strong>Proxmox</strong> = The Hotel Building (has many storage rooms)</p>
+                <p><strong>Talos OS</strong> = Hotel Manager (manages the property)</p>
+                <p><strong>Kubernetes</strong> = Front Desk Reception (assigns rooms to guests)</p>
+                <p><strong>CSI Plugin</strong> = Room Service (delivers storage when requested)</p>
+                <p><strong>Your App (Grafana)</strong> = A guest who needs a room to store luggage</p>
+                <br>
+                <p>When Grafana checks into the hotel (gets deployed), it asks the front desk (Kubernetes) for a storage room. 
+                The front desk calls room service (CSI), who goes to the hotel building (Proxmox) to get a storage room, 
+                and delivers it to the guest's floor (worker node). The guest can now safely store their luggage (data)!</p>
+            </div>
+
+            <!-- Components -->
+            <h2 id="components">🎭 The Players - Who Does What?</h2>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                <span class="step-title">Proxmox VE (The Storage Provider)</span>
+                <p style="margin-top: 15px;">
+                    <strong>Role:</strong> Physical storage owner<br>
+                    <strong>Has:</strong> LVM-Thin storage pool called "local-lvm" with 350GB capacity<br>
+                    <strong>Does:</strong> Creates virtual disks when requested<br>
+                    <strong>Like:</strong> A warehouse that has shelves full of empty boxes
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <span class="step-title">Talos OS (The Operating System)</span>
+                <p style="margin-top: 15px;">
+                    <strong>Role:</strong> Minimal Linux OS running Kubernetes<br>
+                    <strong>Has:</strong> iSCSI kernel module to connect to storage<br>
+                    <strong>Does:</strong> Mounts storage volumes to the operating system<br>
+                    <strong>Like:</strong> The delivery truck that brings boxes from warehouse to your office
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <span class="step-title">Kubernetes (The Orchestrator)</span>
+                <p style="margin-top: 15px;">
+                    <strong>Role:</strong> Container platform<br>
+                    <strong>Has:</strong> Pods (applications) that need storage<br>
+                    <strong>Does:</strong> Manages storage requests and assignments<br>
+                    <strong>Like:</strong> The office manager who decides who gets which box
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                <span class="step-title">Proxmox CSI Plugin (The Bridge)</span>
+                <p style="margin-top: 15px;">
+                    <strong>Role:</strong> Communication bridge between Kubernetes and Proxmox<br>
+                    <strong>Has:</strong> API credentials to talk to Proxmox<br>
+                    <strong>Does:</strong> Creates, attaches, and manages storage volumes<br>
+                    <strong>Like:</strong> The person who speaks both English and French to translate between two parties
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">5</span>
+                <span class="step-title">StorageClass (The Order Form)</span>
+                <p style="margin-top: 15px;">
+                    <strong>Role:</strong> Template for storage requests<br>
+                    <strong>Has:</strong> Rules like filesystem type (XFS), storage pool (local-lvm)<br>
+                    <strong>Does:</strong> Tells CSI exactly what kind of storage to create<br>
+                    <strong>Like:</strong> A menu at a restaurant - describes what you can order and how it's prepared
+                </p>
+            </div>
+
+            <!-- Architecture Diagram -->
+            <h2 id="architecture">🏗️ Architecture - The Big Picture</h2>
+
+            <div class="diagram">
+                <svg viewBox="0 0 800 900" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Proxmox Layer -->
+                    <rect x="50" y="50" width="700" height="150" fill="#ff6b6b" stroke="#c92a2a" stroke-width="3" rx="10"/>
+                    <text x="400" y="90" text-anchor="middle" font-size="24" font-weight="bold" fill="white">Proxmox VE (Hypervisor)</text>
+                    <text x="400" y="120" text-anchor="middle" font-size="18" fill="white">IP: 192.168.1.10</text>
+                    <rect x="100" y="140" width="250" height="40" fill="#fa5252" stroke="#c92a2a" stroke-width="2" rx="5"/>
+                    <text x="225" y="165" text-anchor="middle" font-size="16" fill="white">Storage: local-lvm (350GB)</text>
+                    <rect x="450" y="140" width="250" height="40" fill="#fa5252" stroke="#c92a2a" stroke-width="2" rx="5"/>
+                    <text x="575" y="165" text-anchor="middle" font-size="16" fill="white">API: Port 8006</text>
+
+                    <!-- Arrow 1: Proxmox to Talos -->
+                    <line x1="400" y1="200" x2="400" y2="240" stroke="#495057" stroke-width="3" marker-end="url(#arrowhead)"/>
+                    <text x="420" y="225" font-size="14" fill="#495057">Provides VMs</text>
+
+                    <!-- Talos Layer -->
+                    <rect x="50" y="240" width="700" height="180" fill="#4c6ef5" stroke="#364fc7" stroke-width="3" rx="10"/>
+                    <text x="400" y="270" text-anchor="middle" font-size="24" font-weight="bold" fill="white">Talos OS (3 Virtual Machines)</text>
+                    
+                    <!-- Control Plane VM -->
+                    <rect x="80" y="290" width="200" height="110" fill="#748ffc" stroke="#364fc7" stroke-width="2" rx="5"/>
+                    <text x="180" y="315" text-anchor="middle" font-size="16" font-weight="bold" fill="white">Control Plane</text>
+                    <text x="180" y="340" text-anchor="middle" font-size="14" fill="white">talos-control-01</text>
+                    <text x="180" y="360" text-anchor="middle" font-size="13" fill="white">192.168.1.112</text>
+                    <text x="180" y="380" text-anchor="middle" font-size="12" fill="white">iSCSI: ✓</text>
+
+                    <!-- Worker 1 VM -->
+                    <rect x="300" y="290" width="200" height="110" fill="#748ffc" stroke="#364fc7" stroke-width="2" rx="5"/>
+                    <text x="400" y="315" text-anchor="middle" font-size="16" font-weight="bold" fill="white">Worker 1</text>
+                    <text x="400" y="340" text-anchor="middle" font-size="14" fill="white">talos-worker-01</text>
+                    <text x="400" y="360" text-anchor="middle" font-size="13" fill="white">192.168.1.113</text>
+                    <text x="400" y="380" text-anchor="middle" font-size="12" fill="white">iSCSI: ✓</text>
+
+                    <!-- Worker 2 VM -->
+                    <rect x="520" y="290" width="200" height="110" fill="#748ffc" stroke="#364fc7" stroke-width="2" rx="5"/>
+                    <text x="620" y="315" text-anchor="middle" font-size="16" font-weight="bold" fill="white">Worker 2</text>
+                    <text x="620" y="340" text-anchor="middle" font-size="14" fill="white">talos-worker-02</text>
+                    <text x="620" y="360" text-anchor="middle" font-size="13" fill="white">192.168.1.114</text>
+                    <text x="620" y="380" text-anchor="middle" font-size="12" fill="white">iSCSI: ✓</text>
+
+                    <!-- Arrow 2: Talos to Kubernetes -->
+                    <line x1="400" y1="420" x2="400" y2="460" stroke="#495057" stroke-width="3" marker-end="url(#arrowhead)"/>
+                    <text x="420" y="445" font-size="14" fill="#495057">Runs K8s</text>
+
+                    <!-- Kubernetes Layer -->
+                    <rect x="50" y="460" width="700" height="180" fill="#20c997" stroke="#087f5b" stroke-width="3" rx="10"/>
+                    <text x="400" y="490" text-anchor="middle" font-size="24" font-weight="bold" fill="white">Kubernetes Cluster</text>
+
+                    <!-- CSI Controller -->
+                    <rect x="80" y="510" width="200" height="110" fill="#38d9a9" stroke="#087f5b" stroke-width="2" rx="5"/>
+                    <text x="180" y="535" text-anchor="middle" font-size="16" font-weight="bold" fill="white">CSI Controller</text>
+                    <text x="180" y="555" text-anchor="middle" font-size="12" fill="white">• Talks to Proxmox API</text>
+                    <text x="180" y="575" text-anchor="middle" font-size="12" fill="white">• Creates volumes</text>
+                    <text x="180" y="595" text-anchor="middle" font-size="12" fill="white">• Deletes volumes</text>
+
+                    <!-- CSI Node Plugin -->
+                    <rect x="300" y="510" width="200" height="110" fill="#38d9a9" stroke="#087f5b" stroke-width="2" rx="5"/>
+                    <text x="400" y="535" text-anchor="middle" font-size="16" font-weight="bold" fill="white">CSI Node Plugin</text>
+                    <text x="400" y="555" text-anchor="middle" font-size="12" fill="white">• Runs on workers</text>
+                    <text x="400" y="575" text-anchor="middle" font-size="12" fill="white">• iSCSI connections</text>
+                    <text x="400" y="595" text-anchor="middle" font-size="12" fill="white">• Mounts volumes</text>
+
+                    <!-- StorageClass -->
+                    <rect x="520" y="510" width="200" height="110" fill="#38d9a9" stroke="#087f5b" stroke-width="2" rx="5"/>
+                    <text x="620" y="535" text-anchor="middle" font-size="16" font-weight="bold" fill="white">StorageClass</text>
+                    <text x="620" y="555" text-anchor="middle" font-size="12" fill="white">proxmox-data-xfs</text>
+                    <text x="620" y="575" text-anchor="middle" font-size="12" fill="white">Pool: local-lvm</text>
+                    <text x="620" y="595" text-anchor="middle" font-size="12" fill="white">FS: XFS</text>
+
+                    <!-- Arrow 3: Kubernetes to Apps -->
+                    <line x1="400" y1="640" x2="400" y2="680" stroke="#495057" stroke-width="3" marker-end="url(#arrowhead)"/>
+                    <text x="420" y="665" font-size="14" fill="#495057">Provides Storage</text>
+
+                    <!-- Application Layer -->
+                    <rect x="50" y="680" width="700" height="150" fill="#845ef7" stroke="#5f3dc4" stroke-width="3" rx="10"/>
+                    <text x="400" y="710" text-anchor="middle" font-size="24" font-weight="bold" fill="white">Applications (Pods)</text>
+
+                    <!-- Grafana Pod -->
+                    <rect x="250" y="730" width="300" height="80" fill="#9775fa" stroke="#5f3dc4" stroke-width="2" rx="5"/>
+                    <text x="400" y="755" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Grafana Pod</text>
+                    <text x="400" y="780" text-anchor="middle" font-size="14" fill="white">PVC: grafana-pvc (1Gi)</text>
+                    <text x="400" y="800" text-anchor="middle" font-size="13" fill="white">Mount: /var/lib/grafana</text>
+
+                    <!-- iSCSI Connection (dotted line from CSI Node to Proxmox) -->
+                    <line x1="180" y1="290" x2="225" y2="180" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="150" y="220" font-size="12" fill="#ff6b6b">iSCSI</text>
+                    
+                    <line x1="400" y1="290" x2="400" y2="180" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="410" y="220" font-size="12" fill="#ff6b6b">iSCSI</text>
+
+                    <line x1="620" y1="290" x2="575" y2="180" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="610" y="220" font-size="12" fill="#ff6b6b">iSCSI</text>
+
+                    <!-- Arrow marker definition -->
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#495057"/>
+                        </marker>
+                    </defs>
+                </svg>
+                <div class="diagram-caption">
+                    Figure 1: Complete architecture showing how Proxmox storage reaches Kubernetes applications
+                </div>
+            </div>
+
+            <!-- Detailed Workflow -->
+            <h2 id="workflow">🔄 How It Works - Step by Step</h2>
+
+            <p>Let's follow the journey of how Grafana gets its storage, from request to working storage:</p>
+
+            <!-- Workflow Diagram -->
+            <div class="diagram">
+                <svg viewBox="0 0 900 1200" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Step 1 -->
+                    <circle cx="100" cy="100" r="40" fill="#845ef7" stroke="#5f3dc4" stroke-width="3"/>
+                    <text x="100" y="110" text-anchor="middle" font-size="24" font-weight="bold" fill="white">1</text>
+                    <rect x="160" y="70" width="700" height="60" fill="#f0f0f0" stroke="#adb5bd" stroke-width="2" rx="5"/>
+                    <text x="170" y="95" font-size="16" font-weight="bold">Grafana Deployed</text>
+                    <text x="170" y="115" font-size="14">Kubernetes sees Grafana needs a PersistentVolumeClaim (PVC) for 1Gi storage</text>
+
+                    <!-- Arrow -->
+                    <line x1="100" y1="140" x2="100" y2="190" stroke="#495057" stroke-width="3" marker-end="url(#arrow)"/>
+
+                    <!-- Step 2 -->
+                    <circle cx="100" cy="230" r="40" fill="#845ef7" stroke="#5f3dc4" stroke-width="3"/>
+                    <text x="100" y="240" text-anchor="middle" font-size="24" font-weight="bold" fill="white">2</text>
+                    <rect x="160" y="200" width="700" height="60" fill="#f0f0f0" stroke="#adb5bd" stroke-width="2" rx="5"/>
+                    <text x="170" y="225" font-size="16" font-weight="bold">StorageClass Selected</text>
+                    <text x="170" y="245" font-size="14">PVC references StorageClass "proxmox-data-xfs" with pool=local-lvm, fs=xfs</text>
+
+                    <!-- Arrow -->
+                    <line x1="100" y1="270" x2="100" y2="320" stroke="#495057" stroke-width="3" marker-end="url(#arrow)"/>
+
+                    <!-- Step 3 -->
+                    <circle cx="100" cy="360" r="40" fill="#20c997" stroke="#087f5b" stroke-width="3"/>
+                    <text x="100" y="370" text-anchor="middle" font-size="24" font-weight="bold" fill="white">3</text>
+                    <rect x="160" y="330" width="700" height="60" fill="#d3f9d8" stroke="#087f5b" stroke-width="2" rx="5"/>
+                    <text x="170" y="355" font-size="16" font-weight="bold">CSI Controller Triggered</text>
+                    <text x="170" y="375" font-size="14">Proxmox CSI Controller receives the volume creation request from Kubernetes</text>
+
+                    <!-- Arrow -->
+                    <line x1="100" y1="400" x2="100" y2="450" stroke="#495057" stroke-width="3" marker-end="url(#arrow)"/>
+
+                    <!-- Step 4 -->
+                    <circle cx="100" cy="490" r="40" fill="#ff6b6b" stroke="#c92a2a" stroke-width="3"/>
+                    <text x="100" y="500" text-anchor="middle" font-size="24" font-weight="bold" fill="white">4</text>
+                    <rect x="160" y="460" width="700" height="80" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="5"/>
+                    <text x="170" y="485" font-size="16" font-weight="bold">Proxmox Creates Disk</text>
+                    <text x="170" y="505" font-size="14">CSI calls Proxmox API: "Create a 1GB disk in local-lvm pool"</text>
+                    <text x="170" y="525" font-size="14">Proxmox creates: vm-100-disk-1 (virtual disk in LVM)</text>
+
+                    <!-- Arrow -->
+                    <line x1="100" y1="540" x2="100" y2="590" stroke="#495057" stroke-width="3" marker-end="url(#arrow)"/>
+
+                    <!-- Step 5 -->
+                    <circle cx="100" cy="630" r="40" fill="#4c6ef5" stroke="#364fc7" stroke-width="3"/>
+                    <text x="100" y="640" text-anchor="middle" font-size="24" font-weight="bold" fill="white">5</text>
+                    <rect x="160" y="600" width="700" height="80" fill="#dbe4ff" stroke="#364fc7" stroke-width="2" rx="5"/>
+                    <text x="170" y="625" font-size="16" font-weight="bold">Pod Scheduled</text>
+                    <text x="170" y="645" font-size="14">Kubernetes scheduler assigns Grafana pod to talos-worker-01</text>
+                    <text x="170" y="665" font-size="14">(WaitForFirstConsumer ensures volume created on correct node)</text>
+
+                    <!-- Arrow -->
+                    <line x1="100" y1="680" x2="100" y2="730" stroke="#495057" stroke-width="3" marker-end="url(#arrow)"/>
+
+                    <!-- Step 6 -->
+                    <circle cx="100" cy="770" r="40" fill="#20c997" stroke="#087f5b" stroke-width="3"/>
+                    <text x="100" y="780" text-anchor="middle" font-size="24" font-weight="bold" fill="white">6</text>
+                    <rect x="160" y="740" width="700" height="80" fill="#d3f9d8" stroke="#087f5b" stroke-width="2" rx="5"/>
+                    <text x="170" y="765" font-size="16" font-weight="bold">iSCSI Connection</text>
+                    <text x="170" y="785" font-size="14">CSI Node Plugin on worker-01 initiates iSCSI connection to Proxmox</text>
+                    <text x="170" y="805" font-size="14">Disk appears as /dev/sdX on the Talos worker node</text>
+
+                    <!-- Arrow -->
+                    <line x1="100" y1="820" x2="100" y2="870" stroke="#495057" stroke-width="3" marker-end="url(#arrow)"/>
+
+                    <!-- Step 7 -->
+                    <circle cx="100" cy="910" r="40" fill="#20c997" stroke="#087f5b" stroke-width="3"/>
+                    <text x="100" y="920" text-anchor="middle" font-size="24" font-weight="bold" fill="white">7</text>
+                    <rect x="160" y="880" width="700" height="80" fill="#d3f9d8" stroke="#087f5b" stroke-width="2" rx="5"/>
+                    <text x="170" y="905" font-size="16" font-weight="bold">Filesystem Created</text>
+                    <text x="170" y="925" font-size="14">CSI formats the disk with XFS filesystem</text>
+                    <text x="170" y="945" font-size="14">Volume is now ready to use!</text>
+
+                    <!-- Arrow -->
+                    <line x1="100" y1="960" x2="100" y2="1010" stroke="#495057" stroke-width="3" marker-end="url(#arrow)"/>
+
+                    <!-- Step 8 -->
+                    <circle cx="100" cy="1050" r="40" fill="#845ef7" stroke="#5f3dc4" stroke-width="3"/>
+                    <text x="100" y="1060" text-anchor="middle" font-size="24" font-weight="bold" fill="white">8</text>
+                    <rect x="160" y="1020" width="700" height="80" fill="#f3f0ff" stroke="#5f3dc4" stroke-width="2" rx="5"/>
+                    <text x="170" y="1045" font-size="16" font-weight="bold">Volume Mounted</text>
+                    <text x="170" y="1065" font-size="14">Volume mounted to /var/lib/grafana inside Grafana pod</text>
+                    <text x="170" y="1085" font-size="14">Grafana starts and can now read/write data persistently! 🎉</text>
+
+                    <!-- Arrow marker -->
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#495057"/>
+                        </marker>
+                    </defs>
+                </svg>
+                <div class="diagram-caption">
+                    Figure 2: Complete workflow from application deployment to working persistent storage
+                </div>
+            </div>
+
+            <div class="success-box">
+                <strong>🎯 Key Point:</strong> The entire process is automatic! You just create a PVC, and the CSI plugin 
+                handles everything else - talking to Proxmox, creating the disk, attaching via iSCSI, formatting, and mounting.
+            </div>
+
+            <!-- Technical Details -->
+            <h2>🔧 Technical Details - What Makes It Work</h2>
+
+            <h3>1. iSCSI Protocol (The Connection Method)</h3>
+            <p>
+                <strong>iSCSI</strong> stands for <em>Internet Small Computer Systems Interface</em>. 
+                It's a protocol that allows computers to connect to storage devices over a network, 
+                making remote storage appear as a local disk.
+            </p>
+
+            <div class="highlight-box">
+                <strong>Simple Analogy:</strong> 
+                Imagine plugging a USB drive into your computer, but instead of a physical cable, 
+                it's connected over your network. The computer treats it like a normal disk, 
+                but the actual storage is somewhere else (on Proxmox).
+            </div>
+
+            <p><strong>Why iSCSI?</strong></p>
+            <ul>
+                <li><strong>Performance:</strong> Block-level access (fast, like local disk)</li>
+                <li><strong>Compatibility:</strong> Standard protocol, widely supported</li>
+                <li><strong>Flexibility:</strong> Can be used by multiple nodes</li>
+                <li><strong>Reliability:</strong> Built-in error checking</li>
+            </ul>
+
+            <h3>2. Talos Configuration (Enabling iSCSI)</h3>
+            <p>
+                Talos OS is minimal by design - it doesn't include everything by default. 
+                We need to tell Talos to load the <code>iscsi_tcp</code> kernel module:
+            </p>
+
+            <pre><code># In talconfig.yaml
+machine:
+  kernel:
+    modules:
+      - name: iscsi_tcp  # This enables iSCSI support</code></pre>
+
+            <div class="warning-box">
+                <strong>⚠️ Without this:</strong> The CSI node plugin can't connect to Proxmox storage, 
+                and your PVCs will stay in "Pending" state forever!
+            </div>
+
+            <h3>3. Node Labels (Topology Awareness)</h3>
+            <p>
+                Kubernetes needs to know <em>where</em> each node is located to make smart storage decisions:
+            </p>
+
+            <pre><code># Labels required on each node
+node.cloudprovider.kubernetes.io/platform=nocloud  # Platform type
+topology.kubernetes.io/region=pve                  # Proxmox region
+topology.kubernetes.io/zone=pve                    # Availability zone</code></pre>
+
+            <p><strong>Why these labels matter:</strong></p>
+            <ul>
+                <li><strong>Platform label:</strong> Tells CSI node plugin which nodes to run on</li>
+                <li><strong>Region/Zone labels:</strong> Helps CSI understand node location for volume placement</li>
+                <li><strong>Scheduling:</strong> Ensures pods are scheduled on nodes that can access their volumes</li>
+            </ul>
+
+            <!-- Comparison Table -->
+            <h2 id="comparison">🤔 Why Proxmox CSI Over Other Options?</h2>
+
+            <p>
+                We had several storage options to choose from. Here's why we picked Proxmox CSI:
+            </p>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Proxmox CSI</th>
+                        <th>NFS Provisioner</th>
+                        <th>Longhorn</th>
+                        <th>Local Path</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Native Integration</strong></td>
+                        <td><span class="checkmark">✓</span> Built for Proxmox</td>
+                        <td><span class="crossmark">✗</span> Needs NFS server</td>
+                        <td><span class="crossmark">✗</span> Independent</td>
+                        <td><span class="crossmark">✗</span> Local only</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Performance</strong></td>
+                        <td><span class="checkmark">✓✓✓✓✓</span> Direct block storage</td>
+                        <td><span class="checkmark">✓✓</span> Network overhead</td>
+                        <td><span class="checkmark">✓✓✓</span> Good</td>
+                        <td><span class="checkmark">✓✓✓✓✓</span> Direct</td>
+                    </tr>
+                    <tr>
+                        <td><strong>High Availability</strong></td>
+                        <td><span class="checkmark">✓</span> Via Proxmox HA</td>
+                        <td><span class="checkmark">✓</span> Via NFS HA</td>
+                        <td><span class="checkmark">✓</span> Built-in replication</td>
+                        <td><span class="crossmark">✗</span> No redundancy</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Setup Complexity</strong></td>
+                        <td>⭐⭐⭐ Medium</td>
+                        <td>⭐ Very Easy</td>
+                        <td>⭐⭐⭐⭐ Complex</td>
+                        <td>⭐ Very Easy</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Resource Overhead</strong></td>
+                        <td>Low (just CSI pods)</td>
+                        <td>Very Low</td>
+                        <td>High (storage pods + replication)</td>
+                        <td>Very Low</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Snapshots</strong></td>
+                        <td><span class="checkmark">✓</span> LVM snapshots</td>
+                        <td><span class="crossmark">✗</span> Not supported</td>
+                        <td><span class="checkmark">✓</span> Volume snapshots</td>
+                        <td><span class="crossmark">✗</span> Not supported</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Volume Expansion</strong></td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="crossmark">✗</span> No</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Best For</strong></td>
+                        <td>Production homelab with Proxmox</td>
+                        <td>Quick setup, shared storage</td>
+                        <td>Multi-node with replication</td>
+                        <td>Testing, non-critical data</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="highlight-box">
+                <strong>Our Choice:</strong> Since we're already running on Proxmox with 350GB of LVM storage available, 
+                Proxmox CSI gives us the best performance, leverages existing infrastructure, 
+                and provides features like snapshots and volume expansion - all without needing additional storage infrastructure!
+            </div>
+
+            <!-- Real Example -->
+            <h2 id="example">📊 Real Example - Grafana Storage</h2>
+
+            <p>
+                Let's look at the actual configuration files for Grafana's persistent storage:
+            </p>
+
+            <h3>1. StorageClass Definition</h3>
+            <p>This tells Kubernetes <em>how</em> to create storage:</p>
+
+            <pre><code>apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: proxmox-data-xfs
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"  # Default storage
+provisioner: csi.proxmox.sinextra.dev  # Proxmox CSI driver
+parameters:
+  storage: local-lvm     # Proxmox storage pool name
+  csi.storage.k8s.io/fstype: xfs  # Filesystem type
+  cache: directsync      # Cache mode for I/O
+allowVolumeExpansion: true  # Can grow volume size later
+reclaimPolicy: Delete      # Delete volume when PVC is deleted
+volumeBindingMode: WaitForFirstConsumer  # Create on-demand</code></pre>
+
+            <div class="highlight-box">
+                <strong>🔍 Key Parameters Explained:</strong>
+                <ul style="margin-top: 10px;">
+                    <li><strong>storage: local-lvm</strong> - Must exactly match your Proxmox storage pool name</li>
+                    <li><strong>fstype: xfs</strong> - XFS is better for databases and large files (alternative: ext4)</li>
+                    <li><strong>cache: directsync</strong> - No caching, safest but slower (alternative: writethrough for speed)</li>
+                    <li><strong>WaitForFirstConsumer</strong> - Creates volume only when pod needs it (prevents wrong node placement)</li>
+                </ul>
+            </div>
+
+            <h3>2. PersistentVolumeClaim (PVC)</h3>
+            <p>This is Grafana's request for storage:</p>
+
+            <pre><code>apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: grafana
+spec:
+  storageClassName: proxmox-data-xfs  # Use our Proxmox storage
+  accessModes:
+    - ReadWriteOnce  # One pod at a time can write
+  resources:
+    requests:
+      storage: 1Gi  # Request 1 gigabyte</code></pre>
+
+            <h3>3. Deployment (Using the PVC)</h3>
+            <p>How Grafana pod uses the storage:</p>
+
+            <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: grafana
+spec:
+  template:
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana  # Where Grafana saves data
+      volumes:
+      - name: grafana-storage
+        persistentVolumeClaim:
+          claimName: grafana-pvc  # Reference our PVC</code></pre>
+
+            <div class="success-box">
+                <strong>✨ The Magic:</strong> When this deploys:
+                <ol style="margin-top: 10px;">
+                    <li>Kubernetes sees the PVC needs storage</li>
+                    <li>CSI Controller calls Proxmox: "Create 1GB disk in local-lvm"</li>
+                    <li>Proxmox creates vm-100-disk-1</li>
+                    <li>CSI Node Plugin connects via iSCSI</li>
+                    <li>Formats with XFS filesystem</li>
+                    <li>Mounts to /var/lib/grafana</li>
+                    <li>Grafana saves all dashboards/settings there</li>
+                    <li>Even if pod restarts, data persists! 🎉</li>
+                </ol>
+            </div>
+
+            <h3>4. Verification</h3>
+            <p>Check everything is working:</p>
+
+            <pre><code># Check PVC is bound
+$ kubectl get pvc -n grafana
+NAME          STATUS   VOLUME                                     CAPACITY   STORAGECLASS
+grafana-pvc   Bound    pvc-a1b2c3d4-e5f6-7890-abcd-ef1234567890   1Gi        proxmox-data-xfs
+
+# Check on Proxmox side
+$ ssh root@192.168.1.10 "pvesm list local-lvm | grep vm-"
+local-lvm:vm-100-disk-1   raw   1073741824
+
+# Check pod is running
+$ kubectl get pod -n grafana
+NAME                       READY   STATUS    RESTARTS   AGE
+grafana-5f4b8c9d7e-xyz12   1/1     Running   0          5m
+
+# Check data is being saved
+$ kubectl exec -n grafana grafana-5f4b8c9d7e-xyz12 -- ls -lh /var/lib/grafana
+total 128K
+drwxr-xr-x 3 grafana grafana 4.0K Jan 30 19:00 dashboards
+-rw-r--r-- 1 grafana grafana  87K Jan 30 19:00 grafana.db</code></pre>
+
+            <!-- Common Issues -->
+            <h2>🐛 Common Issues (and How to Fix Them)</h2>
+
+            <div class="step">
+                <span class="step-number">❌</span>
+                <span class="step-title">PVC Stuck in "Pending"</span>
+                <p style="margin-top: 15px;">
+                    <strong>Symptom:</strong> <code>kubectl get pvc</code> shows STATUS=Pending forever<br>
+                    <strong>Cause 1:</strong> No StorageClass exists or isn't set as default<br>
+                    <strong>Fix:</strong> Create StorageClass and set annotation: <code>storageclass.kubernetes.io/is-default-class: "true"</code>
+                </p>
+                <p>
+                    <strong>Cause 2:</strong> CSI Controller not running<br>
+                    <strong>Fix:</strong> Check pods: <code>kubectl get pods -n csi-proxmox</code>
+                </p>
+                <p>
+                    <strong>Cause 3:</strong> Wrong storage pool name in StorageClass<br>
+                    <strong>Fix:</strong> Verify on Proxmox: <code>pvesm status</code> and update StorageClass parameter
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">❌</span>
+                <span class="step-title">CSI Node Pods CrashLoopBackOff</span>
+                <p style="margin-top: 15px;">
+                    <strong>Symptom:</strong> CSI node pods keep restarting<br>
+                    <strong>Cause:</strong> Missing topology labels on nodes<br>
+                    <strong>Fix:</strong> Add required labels:
+                </p>
+                <pre style="margin-top: 10px;"><code>kubectl label node talos-worker-01 \
+  topology.kubernetes.io/region=pve \
+  topology.kubernetes.io/zone=pve --overwrite</code></pre>
+            </div>
+
+            <div class="step">
+                <span class="step-number">❌</span>
+                <span class="step-title">Pod Can't Mount Volume</span>
+                <p style="margin-top: 15px;">
+                    <strong>Symptom:</strong> Pod stuck in ContainerCreating, events show mount errors<br>
+                    <strong>Cause:</strong> iSCSI kernel module not loaded on Talos<br>
+                    <strong>Fix:</strong> Add to talconfig.yaml and regenerate configs:
+                </p>
+                <pre style="margin-top: 10px;"><code>machine:
+  kernel:
+    modules:
+      - name: iscsi_tcp</code></pre>
+            </div>
+
+            <div class="step">
+                <span class="step-number">❌</span>
+                <span class="step-title">"Authentication Failed" in Logs</span>
+                <p style="margin-top: 15px;">
+                    <strong>Symptom:</strong> CSI controller logs show auth errors<br>
+                    <strong>Cause:</strong> Wrong Proxmox API token or secret<br>
+                    <strong>Fix:</strong> Verify token on Proxmox: <code>pveum user token list root@pam</code><br>
+                    Update secret with correct values
+                </p>
+            </div>
+
+            <!-- Best Practices -->
+            <h2>💡 Best Practices</h2>
+
+            <div class="highlight-box">
+                <h3>1. Storage Planning</h3>
+                <ul>
+                    <li>📊 <strong>Monitor Proxmox storage:</strong> Keep 25% free space for overhead</li>
+                    <li>📈 <strong>Size appropriately:</strong> Start small, use volume expansion if needed</li>
+                    <li>🔄 <strong>Regular backups:</strong> PVCs are persistent but not backed up automatically</li>
+                    <li>🗑️ <strong>Cleanup:</strong> Use reclaimPolicy: Delete to auto-clean unused volumes</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3>2. Performance Optimization</h3>
+                <ul>
+                    <li>💾 <strong>Use XFS for databases:</strong> Better for large files and databases</li>
+                    <li>⚡ <strong>Cache modes:</strong> Use <code>directsync</code> for safety, <code>writethrough</code> for speed</li>
+                    <li>🎯 <strong>WaitForFirstConsumer:</strong> Always use this for multi-node clusters</li>
+                    <li>📦 <strong>SSD storage:</strong> Use SSD-backed Proxmox storage for better performance</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3>3. Security</h3>
+                <ul>
+                    <li>🔐 <strong>API tokens:</strong> Use dedicated tokens, not root password</li>
+                    <li>🚫 <strong>Network isolation:</strong> Keep Proxmox API on management network</li>
+                    <li>📝 <strong>RBAC:</strong> Use Kubernetes RBAC to control who can create PVCs</li>
+                    <li>🔒 <strong>Secrets:</strong> Never commit Proxmox tokens to public Git repos</li>
+                </ul>
+            </div>
+
+            <!-- Conclusion -->
+            <h2 id="conclusion">🎓 Conclusion</h2>
+
+            <p>
+                We've learned how Proxmox provides persistent storage to Kubernetes applications running on Talos OS. 
+                The journey from a simple PVC request to working storage involves multiple components working together:
+            </p>
+
+            <div class="success-box">
+                <strong>🎯 Key Takeaways:</strong>
+                <ul style="margin-top: 10px;">
+                    <li><strong>Proxmox</strong> provides the physical storage (LVM pool)</li>
+                    <li><strong>Talos OS</strong> connects to storage via iSCSI</li>
+                    <li><strong>CSI Plugin</strong> bridges Kubernetes and Proxmox</li>
+                    <li><strong>StorageClass</strong> defines how volumes are created</li>
+                    <li><strong>PVC</strong> is your application's request for storage</li>
+                    <li><strong>Everything is automatic</strong> once configured!</li>
+                </ul>
+            </div>
+
+            <p>
+                This architecture gives us:
+            </p>
+            <ul>
+                <li>✅ <strong>High Performance:</strong> Direct block storage via iSCSI</li>
+                <li>✅ <strong>Reliability:</strong> Leverages Proxmox's proven storage</li>
+                <li>✅ <strong>Flexibility:</strong> Easy to expand, snapshot, and manage</li>
+                <li>✅ <strong>Simplicity:</strong> No extra infrastructure needed</li>
+            </ul>
+
+            <div class="analogy-box">
+                <h3>🏁 Remember the Hotel Analogy?</h3>
+                <p>
+                    Now you understand the complete system! When Grafana (the guest) checks in, 
+                    the front desk (Kubernetes) calls room service (CSI), who talks to the building 
+                    manager (Proxmox) to prepare a storage room. The room is delivered via iSCSI 
+                    (elevator/hallway) to the guest's floor (worker node), and they can safely 
+                    store their belongings (data) with confidence it won't disappear!
+                </p>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 1.1em; text-align: center;">
+                <strong>🚀 Your applications now have persistent, reliable storage - 
+                data that survives restarts, migrations, and updates!</strong>
+            </p>
+
+            <div class="warning-box" style="margin-top: 30px;">
+                <strong>📚 Want to Learn More?</strong><br>
+                <ul style="margin-top: 10px;">
+                    <li>📖 Read the full setup guide: <code>docs/STORAGE-SETUP-GUIDE.md</code></li>
+                    <li>🔧 Check configuration: <code>apps/infrastructure/storage/</code></li>
+                    <li>🌐 Proxmox CSI Plugin: <a href="https://github.com/sergelogvinov/proxmox-csi-plugin" target="_blank">GitHub Repository</a></li>
+                    <li>🐧 Talos Documentation: <a href="https://www.talos.dev/" target="_blank">talos.dev</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p style="margin-bottom: 10px;"><strong>📝 Blog Post: Understanding Kubernetes Storage with Proxmox CSI</strong></p>
+            <p>Created: January 30, 2026 | Author: GitHub Copilot</p>
+            <p>Environment: Talos v1.11.0 | Kubernetes v1.33.3 | Proxmox VE</p>
+        </footer>
+    </div>
+</body>
+</html>

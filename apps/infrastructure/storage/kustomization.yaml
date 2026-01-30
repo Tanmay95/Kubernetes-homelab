@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Proxmox CSI Storage Configuration
+# This kustomization manages storage infrastructure for the cluster
+
+namespace: csi-proxmox
+
+resources:
+  # Namespace for CSI components
+  - namespace.yaml
+  
+  # Proxmox API credentials
+  # Contains token for CSI to communicate with Proxmox
+  - proxmox-csi-secret.yaml
+  
+  # Storage classes for dynamic provisioning
+  # Defines how PVCs are provisioned from Proxmox storage
+  - storageclass.yaml
+
+# Note: CSI plugin itself is installed via kubectl apply
+# See README.md or STORAGE-SETUP-GUIDE.md for installation steps

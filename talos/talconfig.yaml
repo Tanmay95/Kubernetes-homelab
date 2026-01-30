@@ -77,6 +77,12 @@ patches:
       disabled: false
       servers:
         - time.cloudflare.com
+# iSCSI support for Proxmox CSI
+- |-
+  machine:
+    kernel:
+      modules:
+        - name: iscsi_tcp
 # Control plane specific configuration
 controlPlane:
   patches:
